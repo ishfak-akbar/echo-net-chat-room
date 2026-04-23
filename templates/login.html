@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TCP Chat Room</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Clash+Display:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #08090a;
+        --surface: #111214;
+        --border: #1f2023;
+        --accent: #4fffb0;
+        --accent2: #ff6b6b;
+        --text: #e2e4e9;
+        --muted: #555861;
+        --error: #ff6b6b;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "JetBrains Mono", monospace;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: radial-gradient(circle, #1f2023 1px, transparent 1px);
+        background-size: 28px 28px;
+        opacity: 0.6;
+        z-index: 0;
+      }
+
+      .orb {
+        position: fixed;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(
+          circle,
+          rgba(79, 255, 176, 0.06) 0%,
+          transparent 65%
+        );
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 0;
+        animation: breathe 5s ease-in-out infinite;
+      }
+
+      @keyframes breathe {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.15);
+        }
+      }
+
+      .card {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        max-width: 400px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 44px 36px;
+        box-shadow:
+          0 0 80px rgba(79, 255, 176, 0.04),
+          0 30px 80px rgba(0, 0, 0, 0.5);
+        animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(24px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 36px;
+      }
+
+      .brand-icon {
+        width: 44px;
+        height: 44px;
+        background: var(--accent);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        flex-shrink: 0;
+      }
+
+      .brand-name {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        color: var(--text);
+      }
+
+      .brand-name span {
+        color: var(--accent);
+      }
+
+      h1 {
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        margin-bottom: 6px;
+      }
+
+      .sub {
+        color: var(--muted);
+        font-size: 12px;
+        margin-bottom: 32px;
+      }
+
+      .sub span {
+        color: var(--accent);
+      }
+
+      .field {
+        margin-bottom: 14px;
+      }
+
+      label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 7px;
+      }
+
+      input {
+        width: 100%;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 11px 14px;
+        color: var(--text);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+        outline: none;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+
+      input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(79, 255, 176, 0.08);
+      }
+
+      input::placeholder {
+        color: var(--muted);
+      }
+
+      .hint {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 5px;
+      }
+
+      .hint b {
+        color: var(--accent);
+      }
+
+      .error-box {
+        background: rgba(255, 107, 107, 0.08);
+        border: 1px solid rgba(255, 107, 107, 0.25);
+        color: var(--error);
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        margin-bottom: 18px;
+      }
+
+      .btn {
+        width: 100%;
+        margin-top: 22px;
+        padding: 13px;
+        background: var(--accent);
+        color: #000;
+        border: none;
+        border-radius: 10px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        letter-spacing: 0.3px;
+        transition:
+          transform 0.15s,
+          box-shadow 0.15s,
+          opacity 0.15s;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 28px rgba(79, 255, 176, 0.25);
+      }
+
+      .btn:active {
+        transform: translateY(0);
+        opacity: 0.9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="orb"></div>
+    <div class="card">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-name">TCP<span>Chat</span></div>
+      </div>
+
+      <h1>Join the Room</h1>
+      <p class="sub">// connect to <span>127.0.0.1:55555</span></p>
+
+      {% if error %}
+      <div class="error-box">⚠ {{ error }}</div>
+      {% endif %}
+
+      <form method="POST">
+        <div class="field">
+          <label>Nickname</label>
+          <input
+            type="text"
+            name="nickname"
+            placeholder="enter your nickname"
+            autocomplete="off"
+            required
+          />
+        </div>
+        <div class="field">
+          <label
+            >Password
+            <span style="color: var(--muted); font-weight: 400"
+              >(admin only)</span
+            ></label
+          >
+          <input
+            type="password"
+            name="password"
+            placeholder="leave blank if not admin"
+          />
+          <p class="hint">
+            Use nickname <b>admin</b> to access the admin panel
+          </p>
+        </div>
+        <button class="btn" type="submit">Connect →</button>
+      </form>
+    </div>
+  </body>
+</html>
