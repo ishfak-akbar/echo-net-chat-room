@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TCP Chat Room</title>
     <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
+      href__="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
       rel="stylesheet"
     />
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
@@ -17,7 +17,6 @@
         margin: 0;
         padding: 0;
       }
-
       :root {
         --bg: #08090a;
         --surface: #111214;
@@ -32,8 +31,9 @@
         --dm-bdr: rgba(123, 108, 255, 0.25);
         --own-bg: #0d2119;
         --own-bdr: rgba(79, 255, 176, 0.18);
+        --global-bg: #0d1a2a;
+        --global-bdr: rgba(79, 200, 255, 0.2);
       }
-
       body {
         background: var(--bg);
         color: var(--text);
@@ -42,7 +42,6 @@
         display: flex;
         overflow: hidden;
       }
-
       .sidebar {
         width: 240px;
         min-width: 240px;
@@ -51,7 +50,6 @@
         display: flex;
         flex-direction: column;
       }
-
       .sidebar-header {
         padding: 20px 18px;
         border-bottom: 1px solid var(--border);
@@ -59,7 +57,6 @@
         align-items: center;
         gap: 10px;
       }
-
       .logo-box {
         width: 34px;
         height: 34px;
@@ -70,7 +67,6 @@
         justify-content: center;
         font-size: 16px;
       }
-
       .logo-name {
         font-size: 15px;
         font-weight: 700;
@@ -78,7 +74,6 @@
       .logo-name span {
         color: var(--accent);
       }
-
       .section-label {
         padding: 16px 18px 8px;
         font-size: 10px;
@@ -86,16 +81,31 @@
         letter-spacing: 1.5px;
         text-transform: uppercase;
         color: var(--muted);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
-
-      #user-list {
+      .section-label button {
+        font-family: inherit;
+        font-size: 9px;
+        background: var(--surface2);
+        color: var(--accent);
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 2px 7px;
+        cursor: pointer;
+      }
+      #user-list,
+      #group-list {
         list-style: none;
         padding: 0 8px;
-        flex: 1;
         overflow-y: auto;
       }
-
-      #user-list li {
+      #user-list {
+        flex: 1;
+      }
+      #user-list li,
+      #group-list li {
         display: flex;
         align-items: center;
         gap: 9px;
@@ -105,15 +115,18 @@
         cursor: pointer;
         transition: background 0.15s;
       }
-
-      #user-list li:hover {
+      #user-list li:hover,
+      #group-list li:hover {
         background: var(--surface2);
       }
       #user-list li.active {
         background: var(--dm-bg);
         color: var(--accent2);
       }
-
+      #group-list li.active {
+        background: rgba(123, 108, 255, 0.1);
+        color: var(--accent2);
+      }
       .udot {
         width: 7px;
         height: 7px;
@@ -122,12 +135,21 @@
         flex-shrink: 0;
         box-shadow: 0 0 6px var(--accent);
       }
-
+      .gdot {
+        width: 7px;
+        height: 7px;
+        background: var(--accent2);
+        border-radius: 50%;
+        flex-shrink: 0;
+        box-shadow: 0 0 6px var(--accent2);
+      }
       .sidebar-footer {
         padding: 14px 18px;
         border-top: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
-
       .my-label {
         font-size: 10px;
         color: var(--muted);
@@ -138,14 +160,32 @@
         font-weight: 700;
         color: var(--accent);
       }
-
+      .global-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px;
+        background: var(--global-bg);
+        border: 1px solid var(--global-bdr);
+        border-radius: 9px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #4fc8ff;
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+      .global-link:hover {
+        opacity: 0.8;
+      }
+      .global-link.active {
+        border-color: #4fc8ff;
+      }
       .main {
         flex: 1;
         display: flex;
         flex-direction: column;
         overflow: hidden;
       }
-
       .chat-header {
         padding: 14px 22px;
         border-bottom: 1px solid var(--border);
@@ -154,7 +194,6 @@
         align-items: center;
         justify-content: space-between;
       }
-
       .chat-title {
         font-size: 16px;
         font-weight: 700;
@@ -166,7 +205,6 @@
       .chat-title span {
         color: var(--accent2);
       }
-
       .live-pill {
         display: flex;
         align-items: center;
@@ -178,7 +216,6 @@
         border-radius: 20px;
         border: 1px solid var(--border);
       }
-
       .live-dot {
         width: 6px;
         height: 6px;
@@ -186,7 +223,6 @@
         border-radius: 50%;
         animation: blink 2s ease-in-out infinite;
       }
-
       @keyframes blink {
         0%,
         100% {
@@ -198,7 +234,6 @@
           box-shadow: none;
         }
       }
-
       .empty-state {
         flex: 1;
         display: flex;
@@ -209,11 +244,9 @@
         gap: 12px;
         font-size: 13px;
       }
-
       .empty-icon {
         font-size: 40px;
       }
-
       #messages {
         flex: 1;
         overflow-y: auto;
@@ -223,7 +256,6 @@
         gap: 6px;
         scroll-behavior: smooth;
       }
-
       #messages::-webkit-scrollbar {
         width: 4px;
       }
@@ -231,7 +263,6 @@
         background: var(--border);
         border-radius: 2px;
       }
-
       .msg {
         max-width: 68%;
         padding: 9px 14px;
@@ -241,7 +272,6 @@
         word-break: break-word;
         animation: pop 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
-
       @keyframes pop {
         from {
           opacity: 0;
@@ -252,7 +282,6 @@
           transform: translateY(0);
         }
       }
-
       .msg-recv {
         align-self: flex-start;
         background: var(--dm-bg);
@@ -260,20 +289,35 @@
         border-bottom-left-radius: 3px;
         color: #c4beff;
       }
-
       .msg-sent {
         align-self: flex-end;
         background: var(--own-bg);
         border: 1px solid var(--own-bdr);
         border-bottom-right-radius: 3px;
       }
-
+      .msg-global {
+        align-self: flex-start;
+        background: var(--global-bg);
+        border: 1px solid var(--global-bdr);
+        border-bottom-left-radius: 3px;
+        color: #a0dcff;
+      }
+      .msg-global-mine {
+        align-self: flex-end;
+        background: #0a1f2e;
+        border: 1px solid var(--global-bdr);
+        border-bottom-right-radius: 3px;
+      }
       .msg-time {
         font-size: 10px;
         color: var(--muted);
         margin-top: 3px;
       }
-
+      .msg-sender {
+        font-size: 10px;
+        color: var(--accent2);
+        margin-bottom: 3px;
+      }
       .msg-err {
         align-self: center;
         font-size: 11px;
@@ -283,7 +327,6 @@
         border-radius: 20px;
         background: rgba(255, 107, 107, 0.05);
       }
-
       .input-row {
         padding: 14px 22px;
         border-top: 1px solid var(--border);
@@ -292,7 +335,6 @@
         gap: 10px;
         align-items: center;
       }
-
       #msg-input {
         flex: 1;
         background: var(--bg);
@@ -307,12 +349,10 @@
           border-color 0.2s,
           box-shadow 0.2s;
       }
-
       #msg-input:focus {
         border-color: var(--accent2);
         box-shadow: 0 0 0 3px rgba(123, 108, 255, 0.08);
       }
-
       #msg-input::placeholder {
         color: var(--muted);
       }
@@ -320,7 +360,6 @@
         opacity: 0.4;
         cursor: not-allowed;
       }
-
       .send-btn {
         width: 42px;
         height: 42px;
@@ -338,18 +377,15 @@
           box-shadow 0.15s;
         font-weight: 700;
       }
-
       .send-btn:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(123, 108, 255, 0.3);
       }
-
       .send-btn:disabled {
         opacity: 0.4;
         cursor: not-allowed;
         transform: none;
       }
-
       .overlay {
         display: none;
         position: fixed;
@@ -362,7 +398,6 @@
       .overlay.show {
         display: flex;
       }
-
       .modal {
         background: var(--surface);
         border: 1px solid var(--border);
@@ -390,6 +425,67 @@
         text-decoration: none;
         font-size: 13px;
       }
+      /* Group modal */
+      .gmodal {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 32px 28px;
+        width: 360px;
+      }
+      .gmodal h3 {
+        font-size: 16px;
+        margin-bottom: 18px;
+      }
+      .gmodal input,
+      .gmodal textarea {
+        width: 100%;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 13px;
+        color: var(--text);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        outline: none;
+        margin-bottom: 12px;
+      }
+      .gmodal input:focus,
+      .gmodal textarea:focus {
+        border-color: var(--accent2);
+      }
+      .gmodal textarea {
+        resize: none;
+        height: 60px;
+      }
+      .gmodal-btns {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+      }
+      .gmodal-btns button {
+        flex: 1;
+        padding: 9px;
+        border-radius: 8px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        border: none;
+      }
+      .btn-create {
+        background: var(--accent2);
+        color: #fff;
+      }
+      .btn-cancel {
+        background: var(--surface2);
+        color: var(--muted);
+        border: 1px solid var(--border) !important;
+      }
+      #groups-section {
+        border-top: 1px solid var(--border);
+        padding-top: 6px;
+      }
     </style>
   </head>
   <body>
@@ -397,15 +493,36 @@
       <div class="modal">
         <h2>⚠️ You were kicked</h2>
         <p>An admin removed you from the chat room.</p>
-        <a href="/">Back to Login</a>
+        <a href__="/">Back to Login</a>
       </div>
     </div>
-
     <div class="overlay" id="banned-overlay">
       <div class="modal">
         <h2>🚫 You are banned</h2>
         <p>You have been permanently banned from this server.</p>
-        <a href="/">Back to Login</a>
+        <a href__="/">Back to Login</a>
+      </div>
+    </div>
+    <!-- Group creation modal -->
+    <div class="overlay" id="group-overlay">
+      <div class="gmodal">
+        <h3>➕ Create Group</h3>
+        <input
+          id="g-name"
+          type="text"
+          placeholder="Group name"
+          autocomplete="off"
+        />
+        <textarea
+          id="g-members"
+          placeholder="Members (comma-separated nicknames)"
+        ></textarea>
+        <div class="gmodal-btns">
+          <button class="btn-cancel" onclick="closeGroupModal()">Cancel</button>
+          <button class="btn-create" onclick="submitCreateGroup()">
+            Create
+          </button>
+        </div>
       </div>
     </div>
 
@@ -416,9 +533,22 @@
       </div>
       <div class="section-label">Online — <span id="online-count">0</span></div>
       <ul id="user-list"></ul>
+
+      <div id="groups-section">
+        <div class="section-label">
+          Groups
+          <button onclick="openGroupModal()">+ New</button>
+        </div>
+        <ul id="group-list"></ul>
+      </div>
+
       <div class="sidebar-footer">
         <div class="my-label">// you are</div>
         <div class="my-nick">{{ nickname }}</div>
+        <!-- Global chat link at the bottom -->
+        <div class="global-link" id="global-btn" onclick="openGlobal()">
+          🌐 Global Chat
+        </div>
       </div>
     </aside>
 
@@ -432,14 +562,11 @@
           live
         </div>
       </div>
-
       <div class="empty-state" id="empty-state">
         <div class="empty-icon">💬</div>
         <div>Select someone from the sidebar to start a DM</div>
       </div>
-
       <div id="messages" style="display: none"></div>
-
       <div class="input-row">
         <input
           id="msg-input"
@@ -455,8 +582,13 @@
     <script>
       const socket = io();
       const ME = "{{ nickname }}";
+      let mode = null; // 'dm', 'global', 'group'
       let dmTarget = null;
-      const conversations = {};
+      let groupTarget = null;
+      const conversations = {}; // dm conversations keyed by nick
+      const groupConversations = {}; // group conversations keyed by group name
+      const globalConversation = [];
+      let myGroups = {}; // group_name -> [members]
 
       socket.on("connected", () => {});
 
@@ -467,6 +599,10 @@
         document.getElementById("kicked-overlay").classList.add("show"),
       );
       socket.on("server_error", () => console.error("Server error"));
+      socket.on("dupe", () => {
+        alert("Nickname already in use. Please log in again.");
+        window.location.href = "/";
+      });
 
       socket.on("userlist", ({ users }) => {
         const list = document.getElementById("user-list");
@@ -477,84 +613,247 @@
         others.forEach((u) => {
           const li = document.createElement("li");
           li.id = `user-${u}`;
-          if (u === dmTarget) li.classList.add("active");
+          if (mode === "dm" && u === dmTarget) li.classList.add("active");
           li.innerHTML = `<span class="udot"></span>${u}`;
           li.onclick = () => openDM(u);
           list.appendChild(li);
         });
       });
 
+      socket.on("grouplist", ({ groups }) => {
+        myGroups = groups;
+        renderGroupList();
+      });
+
+      socket.on("group_added", ({ group, creator }) => {
+        if (!groupConversations[group]) groupConversations[group] = [];
+        renderGroupList();
+      });
+
       socket.on("dm", ({ sender, msg, time }) => {
         if (!conversations[sender]) conversations[sender] = [];
         conversations[sender].push({ sender, msg, time, mine: false });
-        if (dmTarget === sender) {
-          renderMsg({ sender, msg, time, mine: false });
-        }
-        if (dmTarget !== sender) {
+        if (mode === "dm" && dmTarget === sender) {
+          renderMsg({ sender, msg, time, mine: false, showSender: false });
+        } else {
           const li = document.getElementById(`user-${sender}`);
           if (li) li.style.borderLeft = "3px solid var(--accent2)";
         }
       });
 
-      socket.on("dmerr", ({ msg }) => {
+      socket.on("dm_sent", ({ target, msg, time }) => {
+        if (!conversations[target]) conversations[target] = [];
+        conversations[target].push({ sender: ME, msg, time, mine: true });
+        if (mode === "dm" && dmTarget === target) {
+          // already rendered optimistically
+        }
+      });
+      socket.on("broadcast_notice", ({ msg, time }) => {
+        // Show in current message view if open
+        const box = document.getElementById("messages");
+        if (box && box.style.display !== "none") {
+          const div = document.createElement("div");
+          div.style.cssText =
+            "align-self:center;font-size:11px;color:#4fc8ff;padding:4px 14px;border:1px solid rgba(79,200,255,0.25);border-radius:20px;background:rgba(79,200,255,0.06);margin:4px 0;";
+          div.textContent = msg;
+          box.appendChild(div);
+          box.scrollTop = box.scrollHeight;
+        } else {
+          // If no chat is open, show a visible alert banner
+          const banner = document.createElement("div");
+          banner.style.cssText =
+            "position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#0d2b3a;border:1px solid #4fc8ff;color:#4fc8ff;padding:10px 22px;border-radius:12px;font-size:12px;z-index:999;";
+          banner.textContent = msg;
+          document.body.appendChild(banner);
+          setTimeout(() => banner.remove(), 5000);
+        }
+      });
+      socket.on("global_msg", ({ sender, msg, time }) => {
+        const mine = sender === ME;
+        globalConversation.push({ sender, msg, time, mine });
+        if (mode === "global") {
+          renderMsg({
+            sender,
+            msg,
+            time,
+            mine,
+            showSender: true,
+            isGlobal: true,
+          });
+        } else {
+          // Always show admin broadcasts as a system notice in whatever view is open
+          if (sender === "admin" || sender.startsWith("admin")) {
+            const box = document.getElementById("messages");
+            if (box && box.style.display !== "none") {
+              const div = document.createElement("div");
+              div.style.cssText =
+                "align-self:center;font-size:11px;color:#4fc8ff;padding:4px 14px;border:1px solid rgba(79,200,255,0.25);border-radius:20px;background:rgba(79,200,255,0.06);margin:4px 0;animation:pop 0.18s cubic-bezier(0.16,1,0.3,1) both;";
+              div.textContent = `📢 ${msg}`;
+              box.appendChild(div);
+              box.scrollTop = box.scrollHeight;
+            }
+          }
+          // Highlight the Global Chat button
+          const btn = document.getElementById("global-btn");
+          if (btn) btn.style.boxShadow = "0 0 0 2px var(--accent)";
+        }
+      });
+
+      socket.on("gmsg", ({ group, sender, msg, time }) => {
+        if (!groupConversations[group]) groupConversations[group] = [];
+        const mine = sender === ME;
+        groupConversations[group].push({ sender, msg, time, mine });
+        if (mode === "group" && groupTarget === group) {
+          renderMsg({
+            sender,
+            msg,
+            time,
+            mine,
+            showSender: !mine,
+            isGroup: true,
+          });
+        } else {
+          const li = document.getElementById(`group-${group}`);
+          if (li) li.style.borderLeft = "3px solid var(--accent2)";
+        }
+      });
+
+      socket.on("dmerr", ({ msg }) => showErr(msg));
+      socket.on("grperr", ({ msg }) => showErr(msg));
+
+      function showErr(msg) {
         const box = document.getElementById("messages");
         const div = document.createElement("div");
         div.className = "msg msg-err";
         div.textContent = msg;
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
-      });
+      }
+
+      function renderGroupList() {
+        const gl = document.getElementById("group-list");
+        gl.innerHTML = "";
+        Object.keys(myGroups).forEach((gname) => {
+          const members = myGroups[gname];
+          if (!members.includes(ME)) return;
+          const li = document.createElement("li");
+          li.id = `group-${gname}`;
+          if (mode === "group" && groupTarget === gname)
+            li.classList.add("active");
+          li.innerHTML = `<span class="gdot"></span>${gname}`;
+          li.onclick = () => openGroup(gname);
+          gl.appendChild(li);
+        });
+      }
+
+      function setActiveNone() {
+        document.querySelectorAll("#user-list li").forEach((li) => {
+          li.classList.remove("active");
+        });
+        document.querySelectorAll("#group-list li").forEach((li) => {
+          li.classList.remove("active");
+        });
+        document.getElementById("global-btn").classList.remove("active");
+        document.getElementById("global-btn").style.boxShadow = "";
+      }
 
       function openDM(user) {
+        mode = "dm";
         dmTarget = user;
-
-        document
-          .querySelectorAll("#user-list li")
-          .forEach((li) => li.classList.remove("active"));
+        setActiveNone();
         const li = document.getElementById(`user-${user}`);
         if (li) {
           li.classList.add("active");
           li.style.borderLeft = "";
         }
-
-        const title = document.getElementById("chat-title");
-        title.innerHTML = `<span>${user}</span>`;
-
+        document.getElementById("chat-title").innerHTML =
+          `<span>@ ${user}</span>`;
         document.getElementById("empty-state").style.display = "none";
-        const msgBox = document.getElementById("messages");
-        msgBox.style.display = "flex";
-        msgBox.innerHTML = "";
-
-        if (conversations[user]) {
-          conversations[user].forEach((m) => renderMsg(m));
-        }
-
+        const box = document.getElementById("messages");
+        box.style.display = "flex";
+        box.innerHTML = "";
+        if (conversations[user])
+          conversations[user].forEach((m) =>
+            renderMsg({ ...m, showSender: false }),
+          );
         const input = document.getElementById("msg-input");
         input.placeholder = `Message ${user}...`;
         input.disabled = false;
         document.querySelector(".send-btn").disabled = false;
         input.focus();
+        box.scrollTop = box.scrollHeight;
+      }
 
-        msgBox.scrollTop = msgBox.scrollHeight;
+      function openGlobal() {
+        mode = "global";
+        dmTarget = null;
+        groupTarget = null;
+        setActiveNone();
+        document.getElementById("global-btn").classList.add("active");
+        document.getElementById("chat-title").innerHTML =
+          `🌐 <span>Global Chat</span>`;
+        document.getElementById("empty-state").style.display = "none";
+        const box = document.getElementById("messages");
+        box.style.display = "flex";
+        box.innerHTML = "";
+        globalConversation.forEach((m) =>
+          renderMsg({ ...m, showSender: true, isGlobal: true }),
+        );
+        const input = document.getElementById("msg-input");
+        input.placeholder = "Message everyone...";
+        input.disabled = false;
+        document.querySelector(".send-btn").disabled = false;
+        input.focus();
+        box.scrollTop = box.scrollHeight;
+      }
+
+      function openGroup(gname) {
+        mode = "group";
+        groupTarget = gname;
+        dmTarget = null;
+        setActiveNone();
+        const li = document.getElementById(`group-${gname}`);
+        if (li) {
+          li.classList.add("active");
+          li.style.borderLeft = "";
+        }
+        document.getElementById("chat-title").innerHTML =
+          `# <span>${gname}</span>`;
+        document.getElementById("empty-state").style.display = "none";
+        const box = document.getElementById("messages");
+        box.style.display = "flex";
+        box.innerHTML = "";
+        if (groupConversations[gname])
+          groupConversations[gname].forEach((m) =>
+            renderMsg({ ...m, showSender: !m.mine, isGroup: true }),
+          );
+        const input = document.getElementById("msg-input");
+        input.placeholder = `Message #${gname}...`;
+        input.disabled = false;
+        document.querySelector(".send-btn").disabled = false;
+        input.focus();
+        box.scrollTop = box.scrollHeight;
       }
 
       function sendMsg() {
-        if (!dmTarget) return;
         const input = document.getElementById("msg-input");
         const msg = input.value.trim();
         if (!msg) return;
-
         const time = new Date().toLocaleTimeString("en-US", {
           hour: "2-digit",
           minute: "2-digit",
         });
 
-        if (!conversations[dmTarget]) conversations[dmTarget] = [];
-        conversations[dmTarget].push({ sender: ME, msg, time, mine: true });
-
-        renderMsg({ sender: ME, msg, time, mine: true });
-
-        socket.emit("send_dm", { target: dmTarget, msg });
+        if (mode === "dm" && dmTarget) {
+          if (!conversations[dmTarget]) conversations[dmTarget] = [];
+          conversations[dmTarget].push({ sender: ME, msg, time, mine: true });
+          renderMsg({ sender: ME, msg, time, mine: true, showSender: false });
+          socket.emit("send_dm", { target: dmTarget, msg });
+        } else if (mode === "global") {
+          socket.emit("send_global", { msg });
+        } else if (mode === "group" && groupTarget) {
+          socket.emit("send_gmsg", { group: groupTarget, msg });
+        }
         input.value = "";
       }
 
@@ -562,25 +861,61 @@
         if (e.key === "Enter") sendMsg();
       });
 
-      function renderMsg({ sender, msg, time, mine }) {
+      function renderMsg({
+        sender,
+        msg,
+        time,
+        mine,
+        showSender = false,
+        isGlobal = false,
+        isGroup = false,
+      }) {
         const box = document.getElementById("messages");
         const wrap = document.createElement("div");
-        wrap.style.display = "flex";
-        wrap.style.flexDirection = "column";
-        wrap.style.alignItems = mine ? "flex-end" : "flex-start";
-
+        wrap.style.cssText = `display:flex;flex-direction:column;align-items:${mine ? "flex-end" : "flex-start"}`;
+        let cls = mine ? "msg-sent" : "msg-recv";
+        if (isGlobal && !mine) cls = "msg-global";
+        if (isGlobal && mine) cls = "msg-global-mine";
         const div = document.createElement("div");
-        div.className = `msg ${mine ? "msg-sent" : "msg-recv"}`;
+        div.className = `msg ${cls}`;
+        if (showSender && !mine) {
+          const s = document.createElement("div");
+          s.className = "msg-sender";
+          s.textContent = sender;
+          wrap.appendChild(s);
+        }
         div.textContent = msg;
-
         const t = document.createElement("div");
         t.className = "msg-time";
         t.textContent = time;
-
         wrap.appendChild(div);
         wrap.appendChild(t);
         box.appendChild(wrap);
         box.scrollTop = box.scrollHeight;
+      }
+
+      function openGroupModal() {
+        document.getElementById("group-overlay").classList.add("show");
+        document.getElementById("g-name").focus();
+      }
+      function closeGroupModal() {
+        document.getElementById("group-overlay").classList.remove("show");
+        document.getElementById("g-name").value = "";
+        document.getElementById("g-members").value = "";
+      }
+      function submitCreateGroup() {
+        const name = document.getElementById("g-name").value.trim();
+        const raw = document.getElementById("g-members").value;
+        const members = raw
+          .split(",")
+          .map((m) => m.trim())
+          .filter(Boolean);
+        if (!name) {
+          alert("Group name required.");
+          return;
+        }
+        socket.emit("create_group", { name, members });
+        closeGroupModal();
       }
     </script>
   </body>

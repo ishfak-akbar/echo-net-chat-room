@@ -8,7 +8,7 @@ app.secret_key = 'tcpchatroom_secret_key'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 tcp_clients = {}
-nick_map    = {}  
+nick_map = {}
 
 def get_tcp(sid):
     return tcp_clients.get(sid)
@@ -17,7 +17,9 @@ def listen_to_server(sid, tcp_client):
     buffer = ''
     while True:
         try:
-            data = tcp_client.recv(1024).decode('ascii')
+            data = tcp_client.recv(2048).decode('ascii')
+            if not data:
+                break
             buffer += data
 
             while '\n' in buffer:
@@ -26,7 +28,7 @@ def listen_to_server(sid, tcp_client):
                 if not line:
                     continue
 
-                if line.startswith('USERLIST'):
+                if line.startswith('USERLIST '):
                     users = [u for u in line[9:].split(',') if u]
                     socketio.emit('userlist', {'users': users}, to=sid)
 
@@ -36,21 +38,62 @@ def listen_to_server(sid, tcp_client):
                     nick_map.pop(sid, None)
                     return
 
+                elif line == 'BAN':
+                    socketio.emit('banned', {}, to=sid)
+                    tcp_clients.pop(sid, None)
+                    nick_map.pop(sid, None)
+                    return
+
                 elif line.startswith('DM|'):
-                    parts = line[3:].split('|', 1)
-                    if len(parts) == 2:
-                        sender, msg = parts
-                        from datetime import datetime
-                        time = datetime.now().strftime('[%I:%M %p]')
+                    parts = line[3:].split('|', 2)
+                    if len(parts) == 3:
+                        sender, msg, time = parts
                         socketio.emit('dm', {'sender': sender, 'msg': msg, 'time': time}, to=sid)
 
-                elif line.startswith('DMERR'):
+                elif line.startswith('DM_SENT|'):
+                    parts = line[8:].split('|', 2)
+                    if len(parts) == 3:
+                        target, msg, time = parts
+                        socketio.emit('dm_sent', {'target': target, 'msg': msg, 'time': time}, to=sid)
+
+                elif line.startswith('GLOBAL|'):
+                    parts = line[7:].split('|', 2)
+                    if len(parts) == 3:
+                        sender, msg, time = parts
+                        socketio.emit('global_msg', {'sender': sender, 'msg': msg, 'time': time}, to=sid)
+
+                elif line.startswith('DMERR '):
                     socketio.emit('dmerr', {'msg': line[6:]}, to=sid)
 
+                elif line.startswith('GROUPLIST '):
+                    raw = line[10:]
+                    groups = {}
+                    if raw:
+                        for entry in raw.split(';'):
+                            if ':' in entry:
+                                gname, members_raw = entry.split(':', 1)
+                                groups[gname] = members_raw.split(',')
+                    socketio.emit('grouplist', {'groups': groups}, to=sid)
+
+                elif line.startswith('GROUP_ADDED|'):
+                    parts = line[12:].split('|', 1)
+                    if len(parts) == 2:
+                        gname, creator = parts
+                        socketio.emit('group_added', {'group': gname, 'creator': creator}, to=sid)
+
+                elif line.startswith('GMSG|'):
+                    parts = line[5:].split('|', 3)
+                    if len(parts) == 4:
+                        gname, sender, msg, time = parts
+                        socketio.emit('gmsg', {'group': gname, 'sender': sender, 'msg': msg, 'time': time}, to=sid)
+
+                elif line.startswith('GRPERR '):
+                    socketio.emit('grperr', {'msg': line[7:]}, to=sid)
+
         except:
-            socketio.emit('server_error', {}, to=sid)
             break
 
+    socketio.emit('server_error', {}, to=sid)
     tcp_clients.pop(sid, None)
     nick_map.pop(sid, None)
 
@@ -58,11 +101,39 @@ def listen_to_server(sid, tcp_client):
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        nick     = request.form.get('nickname', '').strip()
+        nick = request.form.get('nickname', '').strip()
         password = request.form.get('password', '').strip() or None
 
         if not nick:
             return render_template('login.html', error='Please enter a nickname.')
+
+        # Pre-validate admin password on the server side before redirecting
+        if nick == 'admin':
+            if not password:
+                return render_template('login.html', error='Admin password is required.')
+            # Test connection to verify credentials immediately
+            try:
+                test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                test_sock.settimeout(3)
+                test_sock.connect(('127.0.0.1', 55555))
+                test_sock.recv(1024)  # "Nick"
+                test_sock.send((nick + '\n').encode('ascii'))
+                resp = test_sock.recv(1024).decode('ascii').strip()
+                if resp == 'DUPE':
+                    test_sock.close()
+                    return render_template('login.html', error='Username already taken.')
+                if resp == 'BAN':
+                    test_sock.close()
+                    return render_template('login.html', error='You are banned.')
+                if resp == 'PASS':
+                    test_sock.send((password + '\n').encode('ascii'))
+                    auth = test_sock.recv(1024).decode('ascii').strip()
+                    if auth != 'OK':
+                        test_sock.close()
+                        return render_template('login.html', error='Wrong admin password.')
+                test_sock.close()
+            except Exception as e:
+                return render_template('login.html', error=f'Cannot connect to server: {e}')
 
         session['nickname'] = nick
         session['password'] = password
@@ -74,6 +145,8 @@ def login():
 def chat():
     if 'nickname' not in session:
         return redirect(url_for('login'))
+    if session.get('nickname') == 'admin':
+        return redirect(url_for('admin'))
     return render_template('chat.html', nickname=session['nickname'])
 
 @app.route('/admin')
@@ -82,11 +155,16 @@ def admin():
         return redirect(url_for('login'))
     return render_template('admin.html')
 
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
 
 @socketio.on('connect')
 def on_connect():
-    sid      = request.sid
-    nick     = session.get('nickname')
+    sid = request.sid
+    nick = session.get('nickname')
     password = session.get('password')
 
     if not nick:
@@ -96,14 +174,19 @@ def on_connect():
         tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcp.connect(('127.0.0.1', 55555))
 
-        msg = tcp.recv(1024).decode('ascii')
+        msg = tcp.recv(1024).decode('ascii').strip()
         if msg == 'Nick':
-            tcp.send(nick.encode('ascii'))
+            tcp.send((nick + '\n').encode('ascii'))
 
-        response = tcp.recv(1024).decode('ascii')
+        response = tcp.recv(1024).decode('ascii').strip()
 
         if response == 'BAN':
             emit('banned', {})
+            tcp.close()
+            return
+
+        if response == 'DUPE':
+            emit('dupe', {})
             tcp.close()
             return
 
@@ -112,16 +195,16 @@ def on_connect():
                 emit('auth_error', {})
                 tcp.close()
                 return
-            tcp.send(password.encode('ascii'))
-            auth = tcp.recv(1024).decode('ascii')
-            if auth == 'REFUSE':
+            tcp.send((password + '\n').encode('ascii'))
+            auth = tcp.recv(1024).decode('ascii').strip()
+            if auth != 'OK':
                 emit('auth_error', {})
                 tcp.close()
                 return
-            tcp.recv(1024) 
+            tcp.recv(1024)  # "Connected"
 
         tcp_clients[sid] = tcp
-        nick_map[sid]    = nick
+        nick_map[sid] = nick
 
         t = threading.Thread(target=listen_to_server, args=(sid, tcp), daemon=True)
         t.start()
@@ -130,6 +213,7 @@ def on_connect():
 
     except Exception as e:
         emit('server_error', {'msg': str(e)})
+
 
 @socketio.on('disconnect')
 def on_disconnect():
@@ -142,30 +226,43 @@ def on_disconnect():
         except:
             pass
 
+
 @socketio.on('send_dm')
 def handle_dm(data):
-    sid    = request.sid
-    tcp    = get_tcp(sid)
+    sid = request.sid
+    tcp = get_tcp(sid)
     target = data.get('target', '')
-    msg    = data.get('msg', '').strip()
+    msg = data.get('msg', '').strip()
     if target and msg and tcp:
         tcp.send(f'DM {target} {msg}\n'.encode('ascii'))
 
+
+@socketio.on('send_global')
+def handle_global(data):
+    sid = request.sid
+    tcp = get_tcp(sid)
+    msg = data.get('msg', '').strip()
+    if msg and tcp:
+        tcp.send(f'DM ALL {msg}\n'.encode('ascii'))
+
+
 @socketio.on('kick_user')
 def handle_kick(data):
-    sid    = request.sid
-    tcp    = get_tcp(sid)
+    sid = request.sid
+    tcp = get_tcp(sid)
     target = data.get('target', '')
     if target and tcp:
         tcp.send(f'KICK {target}\n'.encode('ascii'))
 
+
 @socketio.on('ban_user')
 def handle_ban(data):
-    sid    = request.sid
-    tcp    = get_tcp(sid)
+    sid = request.sid
+    tcp = get_tcp(sid)
     target = data.get('target', '')
     if target and tcp:
         tcp.send(f'BAN {target}\n'.encode('ascii'))
+
 
 @socketio.on('broadcast_msg')
 def handle_broadcast(data):
@@ -175,7 +272,30 @@ def handle_broadcast(data):
     if msg and tcp:
         from datetime import datetime
         time = datetime.now().strftime('[%I:%M %p]')
-        tcp.send(f'DM ALL {time} 📢 ADMIN: {msg}\n'.encode('ascii'))
+
+        socketio.emit('broadcast_notice', {'msg': f'📢 ADMIN: {msg}', 'time': time})
+
+
+@socketio.on('create_group')
+def handle_create_group(data):
+    sid = request.sid
+    tcp = get_tcp(sid)
+    group_name = data.get('name', '').strip()
+    members = data.get('members', [])
+    if group_name and tcp:
+        members_str = ','.join(members)
+        tcp.send(f'MKGROUP {group_name} {members_str}\n'.encode('ascii'))
+
+
+@socketio.on('send_gmsg')
+def handle_gmsg(data):
+    sid = request.sid
+    tcp = get_tcp(sid)
+    group_name = data.get('group', '')
+    msg = data.get('msg', '').strip()
+    if group_name and msg and tcp:
+        tcp.send(f'GMSG {group_name} {msg}\n'.encode('ascii'))
+
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5000)

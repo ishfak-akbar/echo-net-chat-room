@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Panel — TCP Chat</title>
     <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Clash+Display:wght@500;700&display=swap"
+      href__="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Clash+Display:wght@500;700&display=swap"
       rel="stylesheet"
     />
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
@@ -17,7 +17,6 @@
         margin: 0;
         padding: 0;
       }
-
       :root {
         --bg: #08090a;
         --surface: #111214;
@@ -29,7 +28,6 @@
         --text: #e2e4e9;
         --muted: #555861;
       }
-
       body {
         background: var(--bg);
         color: var(--text);
@@ -38,7 +36,6 @@
         display: flex;
         flex-direction: column;
       }
-
       body::before {
         content: "";
         position: fixed;
@@ -49,7 +46,6 @@
         z-index: 0;
         pointer-events: none;
       }
-
       .header {
         position: relative;
         z-index: 1;
@@ -60,13 +56,11 @@
         align-items: center;
         justify-content: space-between;
       }
-
       .header-left {
         display: flex;
         align-items: center;
         gap: 12px;
       }
-
       .hicon {
         width: 36px;
         height: 36px;
@@ -77,7 +71,6 @@
         justify-content: center;
         font-size: 17px;
       }
-
       .header h1 {
         font-size: 18px;
         font-weight: 700;
@@ -85,7 +78,6 @@
       .header h1 span {
         color: var(--danger);
       }
-
       .nav-links {
         display: flex;
         gap: 10px;
@@ -105,7 +97,6 @@
         color: var(--accent);
         border-color: var(--accent);
       }
-
       .wrap {
         position: relative;
         z-index: 1;
@@ -117,14 +108,12 @@
         grid-template-columns: 1fr 1fr;
         gap: 20px;
       }
-
       .card {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 14px;
         padding: 24px;
       }
-
       .card-title {
         font-size: 10px;
         font-weight: 700;
@@ -136,14 +125,14 @@
         align-items: center;
         gap: 7px;
       }
-
       #admin-users {
         list-style: none;
         display: flex;
         flex-direction: column;
         gap: 7px;
+        max-height: 320px;
+        overflow-y: auto;
       }
-
       #admin-users li {
         display: flex;
         align-items: center;
@@ -154,7 +143,6 @@
         border-radius: 8px;
         font-size: 13px;
       }
-
       .udot {
         width: 7px;
         height: 7px;
@@ -163,13 +151,11 @@
         flex-shrink: 0;
         box-shadow: 0 0 5px var(--accent);
       }
-
       .actions {
         margin-left: auto;
         display: flex;
         gap: 6px;
       }
-
       .bkick,
       .bban {
         border: none;
@@ -181,7 +167,6 @@
         cursor: pointer;
         transition: opacity 0.15s;
       }
-
       .bkick {
         background: rgba(255, 179, 71, 0.12);
         color: var(--warn);
@@ -192,19 +177,15 @@
         color: var(--danger);
         border: 1px solid rgba(255, 107, 107, 0.25);
       }
-      .bkick:hover {
-        opacity: 0.75;
-      }
+      .bkick:hover,
       .bban:hover {
         opacity: 0.75;
       }
-
       .stats {
         display: flex;
         flex-direction: column;
         gap: 10px;
       }
-
       .stat {
         display: flex;
         justify-content: space-between;
@@ -214,7 +195,6 @@
         border: 1px solid var(--border);
         border-radius: 8px;
       }
-
       .stat-label {
         font-size: 12px;
         color: var(--muted);
@@ -224,27 +204,24 @@
         font-weight: 700;
         color: var(--accent);
       }
-
       #log {
         background: var(--bg);
         border: 1px solid var(--border);
         border-radius: 8px;
         padding: 12px;
-        height: 200px;
+        height: 220px;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
         gap: 4px;
         font-size: 11px;
       }
-
       #log::-webkit-scrollbar {
         width: 3px;
       }
       #log::-webkit-scrollbar-thumb {
         background: var(--border);
       }
-
       .log-row {
         display: flex;
         gap: 10px;
@@ -256,13 +233,11 @@
       .log-m {
         color: var(--muted);
       }
-
       .bc-form {
         display: flex;
         flex-direction: column;
         gap: 10px;
       }
-
       textarea {
         background: var(--bg);
         border: 1px solid var(--border);
@@ -276,11 +251,9 @@
         outline: none;
         transition: border-color 0.2s;
       }
-
       textarea:focus {
         border-color: var(--accent);
       }
-
       .bc-btn {
         background: var(--accent);
         color: #000;
@@ -295,12 +268,10 @@
           transform 0.15s,
           box-shadow 0.15s;
       }
-
       .bc-btn:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 18px rgba(79, 255, 176, 0.2);
       }
-
       .empty {
         font-size: 12px;
         color: var(--muted);
@@ -314,8 +285,8 @@
         <h1>Admin <span>Panel</span></h1>
       </div>
       <div class="nav-links">
-        <a href="/chat">→ Chat</a>
-        <a href="/">Logout</a>
+        <a href__="/chat">→ Chat</a>
+        <a href__="/logout">Logout</a>
       </div>
     </div>
 
@@ -338,6 +309,10 @@
             <span class="stat-label">actions taken</span>
             <span class="stat-val" id="s-actions">0</span>
           </div>
+          <div class="stat">
+            <span class="stat-label">broadcasts sent</span>
+            <span class="stat-val" id="s-bc">0</span>
+          </div>
         </div>
       </div>
 
@@ -352,7 +327,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">📢 Broadcast</div>
+        <div class="card-title">📢 Broadcast to All</div>
         <div class="bc-form">
           <textarea
             id="bc-msg"
@@ -368,35 +343,45 @@
     <script>
       const socket = io();
       let actions = 0;
+      let broadcasts = 0;
 
       socket.on("userlist", ({ users }) => {
         const list = document.getElementById("admin-users");
         const online = users.filter((u) => u && u !== "admin");
         document.getElementById("s-online").textContent = online.length;
-
         if (!online.length) {
           list.innerHTML = '<li class="empty">No users online</li>';
           return;
         }
-
         list.innerHTML = "";
         online.forEach((u) => {
           const li = document.createElement("li");
+          li.id = `auser-${u}`;
           li.innerHTML = `
-        <span class="udot"></span>
-        <span>${u}</span>
-        <div class="actions">
-          <button class="bkick" onclick="doKick('${u}')">KICK</button>
-          <button class="bban"  onclick="doBan('${u}')">BAN</button>
-        </div>`;
+            <span class="udot"></span>
+            <span>${u}</span>
+            <div class="actions">
+              <button class="bkick" onclick="doKick('${u}')">KICK</button>
+              <button class="bban" onclick="doBan('${u}')">BAN</button>
+            </div>`;
           list.appendChild(li);
         });
       });
 
-      socket.on("message", ({ msg }) => log(msg));
+      socket.on("global_msg", ({ sender, msg }) => {
+        if (sender !== "admin") log(`💬 ${sender}: ${msg}`);
+      });
 
       function log(text) {
         const box = document.getElementById("log");
+        // Remove placeholder
+        const placeholder = box.querySelector(".log-m");
+        if (
+          placeholder &&
+          placeholder.textContent === "Waiting for activity..."
+        ) {
+          box.innerHTML = "";
+        }
         const now = new Date().toLocaleTimeString("en-US", {
           hour: "2-digit",
           minute: "2-digit",
@@ -414,6 +399,16 @@
         actions++;
         document.getElementById("s-actions").textContent = actions;
         log(`⚠ Kicked ${name}`);
+        const li = document.getElementById(`auser-${name}`);
+        if (li) li.remove();
+        // Update online count
+        const current = parseInt(
+          document.getElementById("s-online").textContent,
+        );
+        document.getElementById("s-online").textContent = Math.max(
+          0,
+          current - 1,
+        );
       }
 
       function doBan(name) {
@@ -422,6 +417,15 @@
         actions++;
         document.getElementById("s-actions").textContent = actions;
         log(`🚫 Banned ${name}`);
+        const li = document.getElementById(`auser-${name}`);
+        if (li) li.remove();
+        const current = parseInt(
+          document.getElementById("s-online").textContent,
+        );
+        document.getElementById("s-online").textContent = Math.max(
+          0,
+          current - 1,
+        );
       }
 
       function doBroadcast() {
@@ -429,11 +433,10 @@
         if (!msg) return;
         socket.emit("broadcast_msg", { msg });
         document.getElementById("bc-msg").value = "";
+        broadcasts++;
+        document.getElementById("s-bc").textContent = broadcasts;
         log(`📢 Broadcast: ${msg}`);
       }
-
-      socket.emit("get_users");
-      setInterval(() => socket.emit("get_users"), 3000);
     </script>
   </body>
 </html>
