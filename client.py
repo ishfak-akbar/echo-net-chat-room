@@ -1,5 +1,6 @@
 import socket
 import threading
+from datetime import datetime
 
 nickname = input("Choose a nickname: ")
 password = None                         
@@ -10,6 +11,9 @@ stop_thread = False
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(('127.0.0.1', 55555))
+
+def get_time():
+    return datetime.now().strftime('[%I:%M %p]')
 
 def receive():
     global stop_thread
@@ -42,8 +46,8 @@ def write():
     while True:
         if stop_thread:
             break
-        message = f'{nickname}: {input("")}'
-        cmd = message[len(nickname)+2:]
+        text = input("")
+        cmd = text.strip()
         if cmd.startswith('/'):
             if nickname == 'admin':
                 if cmd.startswith('/kick'):
@@ -53,6 +57,7 @@ def write():
             else:
                 print('Command can only be accessed by admin')
         else:
+            message = f'{get_time()} {nickname}: {text}'
             client.send(message.encode('ascii'))                    
 
 receive_thread = threading.Thread(target=receive)
