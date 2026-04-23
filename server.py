@@ -54,6 +54,23 @@ def handle(client):
                 else:
                     client.send('Command was refused'.encode('ascii'))
 
+            elif decoded.startswith('DM'):
+                parts = decoded[3:].split(' ', 1)
+                if len(parts) == 2:
+                    target_nick, dm_message = parts
+                    sender_nick = nicknames[clients.index(client)]
+                    
+                    if target_nick in nicknames:
+                        target_client = clients[nicknames.index(target_nick)]
+                        
+                        target_client.send(f'{get_time()} [DM from {sender_nick}]: {dm_message}'.encode('ascii'))
+                        client.send(f'{get_time()} [DM to {target_nick}]: {dm_message}'.encode('ascii'))
+                        
+                    else:
+                        client.send(f'User {target_nick} not found'.encode('ascii'))
+                else:
+                    client.send('Usage: /dm <nickname> <message>'.encode('ascii'))
+            
             else:
                 broadcast(msg)
 

@@ -53,7 +53,14 @@ def write():
                 if cmd.startswith('/kick'):
                     client.send(f'KICK {cmd[6:]}'.encode('ascii'))   
                 elif cmd.startswith('/ban'):
-                    client.send(f'BAN {cmd[5:]}'.encode('ascii'))   
+                    client.send(f'BAN {cmd[5:]}'.encode('ascii')) 
+            elif cmd.startswith('/dm'):
+                parts = cmd[4:].split(' ', 1)                                       
+                if len(parts) == 2:
+                    target_nick, dm_message = parts
+                    client.send(f'DM {target_nick} {dm_message}'.encode('ascii'))
+                else:
+                    print('Usage: /dm <nickname> <message>')
             else:
                 print('Command can only be accessed by admin')
         else:
