@@ -20,15 +20,24 @@ def broadcast(message):
     for client in clients:
         client.send(message)
 
+def broadcast_userlist():
+    """Push updated user list to every connected client."""
+    user_list = ','.join(nicknames)
+    for client in clients:
+        try:
+            client.send(f'USERLIST {user_list}\n'.encode('ascii'))
+        except:
+            pass
+
 def kick_user(name):
     if name in nicknames:
         name_index = nicknames.index(name)
         client_to_kick = clients[name_index]
         clients.remove(client_to_kick)
-        client_to_kick.send('You were kicked by an admin!'.encode('ascii'))
+        client_to_kick.send('KICKED'.encode('ascii'))
         client_to_kick.close()
         nicknames.remove(name)
-        broadcast(f'{get_time()} {name} was kicked by an admin!'.encode('ascii'))
+        broadcast_userlist()
         print(f'{name} was kicked!')
 
 def handle(client):
@@ -39,16 +48,15 @@ def handle(client):
 
             if decoded.startswith('KICK'):
                 if nicknames[clients.index(client)] == 'admin':
-                    name_to_kick = decoded[5:]
-                    kick_user(name_to_kick)
+                    kick_user(decoded[5:].strip())
                 else:
                     client.send('Command was refused'.encode('ascii'))
 
             elif decoded.startswith('BAN'):
                 if nicknames[clients.index(client)] == 'admin':
-                    name_to_ban = decoded[4:]
+                    name_to_ban = decoded[4:].strip()
                     kick_user(name_to_ban)
-                    with open('bans.txt', 'a') as f:    
+                    with open('bans.txt', 'a') as f:
                         f.write(f'{name_to_ban}\n')
                     print(f'{name_to_ban} was banned!')
                 else:
@@ -59,20 +67,12 @@ def handle(client):
                 if len(parts) == 2:
                     target_nick, dm_message = parts
                     sender_nick = nicknames[clients.index(client)]
-                    
                     if target_nick in nicknames:
                         target_client = clients[nicknames.index(target_nick)]
-                        
-                        target_client.send(f'{get_time()} [DM from {sender_nick}]: {dm_message}'.encode('ascii'))
-                        client.send(f'{get_time()} [DM to {target_nick}]: {dm_message}'.encode('ascii'))
-                        
+                        target_client.send(f'DM|{sender_nick}|{dm_message}'.encode('ascii'))
                     else:
-                        client.send(f'User {target_nick} not found'.encode('ascii'))
-                else:
-                    client.send('Usage: /dm <nickname> <message>'.encode('ascii'))
-            
-            else:
-                broadcast(msg)
+                        client.send(f'DMERR User "{target_nick}" not found.'.encode('ascii'))
+
 
         except:
             if client in clients:
@@ -80,8 +80,8 @@ def handle(client):
                 clients.remove(client)
                 client.close()
                 nickname = nicknames[index]
-                broadcast(f'{get_time()} {nickname} has left the chat'.encode('ascii'))
                 nicknames.remove(nickname)
+                broadcast_userlist()   
             break
 
 def receive():
@@ -99,7 +99,7 @@ def receive():
 
         if nickname+'\n' in bans:
             client.send('BAN'.encode('ascii'))
-            client.close()                              
+            client.close()
             continue
 
         if nickname == 'admin':
@@ -115,7 +115,7 @@ def receive():
 
         print(f'Nickname of the client is {nickname}!')
         client.send('Connected to the server!'.encode('ascii'))
-        broadcast(f'{get_time()} {nickname} joined the chat!'.encode('ascii'))
+        broadcast_userlist()
 
         thread = threading.Thread(target=handle, args=(client,))
         thread.start()
