@@ -9,6 +9,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 tcp_clients = {}
 nick_map = {}
+nick_to_sid = {}
 
 def get_tcp(sid):
     return tcp_clients.get(sid)
@@ -42,6 +43,18 @@ def listen_to_server(sid, tcp_client):
                     socketio.emit('banned', {}, to=sid)
                     tcp_clients.pop(sid, None)
                     nick_map.pop(sid, None)
+                    return
+                
+                elif line.startswith('BANLIST'):
+                    bans = [b for b in line[8:].split(',') if b]
+                    socketio.emit('banlist', {'bans': bans}, to=sid)
+
+                elif line.startswith('UNBAN_OK'):
+                    name = line[9:].strip()
+                    socketio.emit('unban_ok', {'name': name}, to=sid)
+
+                elif line == 'NICK_TAKEN':
+                    socketio.emit('nick_taken', {}, to=sid)
                     return
 
                 elif line.startswith('DM|'):
@@ -163,54 +176,68 @@ def logout():
 
 @socketio.on('connect')
 def on_connect():
-    sid = request.sid
-    nick = session.get('nickname')
+    sid      = request.sid
+    nick     = session.get('nickname')
     password = session.get('password')
-
+ 
     if not nick:
         return
-
+ 
+    existing_sid = nick_to_sid.get(nick)
+    if existing_sid and existing_sid in tcp_clients:
+        old_tcp = tcp_clients[existing_sid]
+        tcp_clients[sid] = old_tcp
+        nick_map[sid]    = nick
+        nick_to_sid[nick] = sid
+        tcp_clients.pop(existing_sid, None)
+        nick_map.pop(existing_sid, None)
+        t = threading.Thread(target=listen_to_server, args=(sid, old_tcp), daemon=True)
+        t.start()
+        emit('connected', {'nick': nick})
+        return
+ 
     try:
         tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         tcp.connect(('127.0.0.1', 55555))
-
+ 
         msg = tcp.recv(1024).decode('ascii').strip()
         if msg == 'Nick':
-            tcp.send((nick + '\n').encode('ascii'))
-
+            tcp.send(nick.encode('ascii'))
+ 
         response = tcp.recv(1024).decode('ascii').strip()
-
+ 
         if response == 'BAN':
             emit('banned', {})
             tcp.close()
             return
-
-        if response == 'DUPE':
-            emit('dupe', {})
+ 
+        if response == 'NICK_TAKEN':
+            emit('nick_taken', {})
             tcp.close()
             return
-
+ 
         if response == 'PASS':
             if not password:
                 emit('auth_error', {})
                 tcp.close()
                 return
-            tcp.send((password + '\n').encode('ascii'))
+            tcp.send(password.encode('ascii'))
             auth = tcp.recv(1024).decode('ascii').strip()
-            if auth != 'OK':
+            if auth == 'REFUSE':
                 emit('auth_error', {})
                 tcp.close()
                 return
-            tcp.recv(1024)  # "Connected"
-
-        tcp_clients[sid] = tcp
-        nick_map[sid] = nick
-
+            tcp.recv(1024)
+ 
+        tcp_clients[sid]  = tcp
+        nick_map[sid]     = nick
+        nick_to_sid[nick] = sid
+ 
         t = threading.Thread(target=listen_to_server, args=(sid, tcp), daemon=True)
         t.start()
-
+ 
         emit('connected', {'nick': nick})
-
+ 
     except Exception as e:
         emit('server_error', {'msg': str(e)})
 
@@ -295,6 +322,21 @@ def handle_gmsg(data):
     msg = data.get('msg', '').strip()
     if group_name and msg and tcp:
         tcp.send(f'GMSG {group_name} {msg}\n'.encode('ascii'))
+        
+@socketio.on('unban_user')
+def handle_unban(data):
+    sid    = request.sid
+    tcp    = get_tcp(sid)
+    target = data.get('target', '')
+    if target and tcp:
+        tcp.send(f'UNBAN {target}\n'.encode('ascii'))
+
+@socketio.on('get_bans')
+def handle_get_bans():
+    sid = request.sid
+    tcp = get_tcp(sid)
+    if tcp:
+        tcp.send('BANLIST\n'.encode('ascii'))
 
 
 if __name__ == '__main__':

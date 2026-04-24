@@ -143,6 +143,36 @@ def handle(client):
                                     pass
                     else:
                         client.send(f'GRPERR Not a member of "{group_name}".\n'.encode('ascii'))
+            
+            elif decoded.startswith('UNBAN'):
+                if nicknames[clients.index(client)] == 'admin':
+                    name_to_unban = decoded[6:].strip()
+                    try:
+                        with open('bans.txt', 'r') as f:
+                            bans = f.readlines()
+                        with open('bans.txt', 'w') as f:
+                            for ban in bans:
+                                if ban.strip() != name_to_unban:
+                                    f.write(ban)
+                        client.send(f'UNBAN_OK {name_to_unban}\n'.encode('ascii'))
+                        print(f'{name_to_unban} was unbanned!')
+                    except:
+                        pass
+                else:
+                    client.send('REFUSED\n'.encode('ascii'))
+            elif decoded == 'BANLIST':
+                if nicknames[clients.index(client)] == 'admin':
+                    try:
+                        with open('bans.txt', 'r') as f:
+                            bans = [b.strip() for b in f.readlines() if b.strip()]
+                        ban_list = ','.join(bans) if bans else ''
+                        client.send(f'BANLIST {ban_list}\n'.encode('ascii'))
+                    except:
+                        client.send('BANLIST \n'.encode('ascii'))
+                        
+            elif decoded == 'USERLIST':
+                user_list = ','.join(nicknames)
+                client.send(f'USERLIST {user_list}\n'.encode('ascii'))
 
         except:
             if client in clients:
@@ -189,6 +219,11 @@ def receive():
                 client.close()
                 continue
             client.send('OK\n'.encode('ascii'))
+            
+        if nickname in nicknames:
+            client.send('NICK_TAKEN\n'.encode('ascii'))
+            client.close()
+            continue
 
         nicknames.append(nickname)
         clients.append(client)

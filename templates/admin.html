@@ -143,6 +143,24 @@
         border-radius: 8px;
         font-size: 17px;
       }
+      #ban-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        max-height: 320px;
+        overflow-y: auto;
+      }
+      #ban-list li {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 9px 12px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 17px;
+      }
       .udot {
         width: 7px;
         height: 7px;
@@ -157,7 +175,8 @@
         gap: 6px;
       }
       .bkick,
-      .bban {
+      .bban,
+      .bunban {
         border: none;
         border-radius: 5px;
         padding: 4px 10px;
@@ -177,8 +196,14 @@
         color: var(--danger);
         border: 1px solid rgba(255, 107, 107, 0.25);
       }
+      .bunban {
+        background: rgba(46, 204, 113, 0.12);
+        color: #2ecc71;
+        border: 1px solid rgba(46, 204, 113, 0.25);
+      }
       .bkick:hover,
-      .bban:hover {
+      .bban:hover,
+      .bunban:hover {
         opacity: 0.75;
       }
       .stats {
@@ -297,7 +322,6 @@
           <li class="empty">Loading...</li>
         </ul>
       </div>
-
       <div class="card">
         <div class="card-title">📊 Stats</div>
         <div class="stats">
@@ -315,7 +339,13 @@
           </div>
         </div>
       </div>
-
+      <div class="card">
+        <div class="card-title">🚫 Banned Users</div>
+        <ul id="ban-list">
+          <li class="empty">Loading...</li>
+        </ul>
+      </div>
+      
       <div class="card">
         <div class="card-title">📋 Activity Log</div>
         <div id="log">
@@ -370,6 +400,24 @@
 
       socket.on("global_msg", ({ sender, msg }) => {
         if (sender !== "admin") log(`💬 ${sender}: ${msg}`);
+      });
+
+      socket.on("banlist", ({ bans }) => {
+        const list = document.getElementById("ban-list");
+        if (!bans.length) {
+          list.innerHTML = '<li class="empty">No banned users</li>';
+          return;
+        }
+        list.innerHTML = "";
+        bans.forEach((b) => {
+          const li = document.createElement("li");
+          li.id = `buser-${b}`;
+          li.innerHTML = `<span class="bdot"></span><span>${b}</span>
+                <div class="actions">
+                    <button class="bunban" onclick="doUnban('${b}')">UNBAN</button>
+                </div>`;
+          list.appendChild(li);
+        });
       });
 
       function log(text) {
@@ -428,6 +476,11 @@
         );
       }
 
+      function doUnban(name) {
+        if (!confirm(`Unban ${name}?`)) return;
+        socket.emit("unban_user", { target: name });
+      }
+
       function doBroadcast() {
         const msg = document.getElementById("bc-msg").value.trim();
         if (!msg) return;
@@ -437,6 +490,12 @@
         document.getElementById("s-bc").textContent = broadcasts;
         log(`📢 Broadcast: ${msg}`);
       }
+
+      socket.emit("get_bans");
+      setInterval(() => {
+        socket.emit("get_users");
+        socket.emit("get_bans");
+      }, 5000);
     </script>
   </body>
 </html>
