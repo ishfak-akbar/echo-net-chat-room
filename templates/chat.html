@@ -121,24 +121,31 @@
       #group-list li {
         display: flex;
         align-items: center;
-        gap: 9px;
-        padding: 8px 10px;
-        border-radius: 8px;
-        font-size: 17px;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-radius: 14px;
         cursor: pointer;
         transition: background 0.15s;
+        background: transparent;
+        border: 1px solid transparent;
       }
       #user-list li:hover,
       #group-list li:hover {
         background: var(--surface2);
+        border-color: var(--border);
       }
-      #user-list li.active {
-        background: var(--highlight);
-        color: var(--accent);
-      }
+
+      #user-list li.active,
       #group-list li.active {
-        background: rgba(123, 108, 255, 0.1);
-        color: var(--accent2);
+        background: var(--highlight);
+        border-color: var(--accent);
+      }
+      .avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        flex-shrink: 0;
       }
       .udot {
         width: 7px;
@@ -594,6 +601,7 @@
     </main>
 
     <script>
+      const lastMessage = {};
       const socket = io();
       const ME = "{{ nickname }}";
       let mode = null; // 'dm', 'global', 'group'
@@ -621,14 +629,27 @@
       socket.on("userlist", ({ users }) => {
         const list = document.getElementById("user-list");
         const count = document.getElementById("online-count");
-        const others = users.filter((u) => u && u !== ME);
+        const others = users.filter(Boolean).filter((u) => u !== ME);
+
         count.textContent = others.length;
         list.innerHTML = "";
         others.forEach((u) => {
           const li = document.createElement("li");
           li.id = `user-${u}`;
-          if (mode === "dm" && u === dmTarget) li.classList.add("active");
-          li.innerHTML = `<span class="udot"></span>${u}`;
+
+          li.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+            <div class="avatar"></div>
+            <div style="display:flex;flex-direction:column;min-width:0;">
+              <span>${u}</span>
+              <span style="font-size:12px;color:var(--muted);">
+                ${lastMessage[u] || "No messages yet"}
+              </span>
+            </div>
+          </div>
+          <span style="font-size:12px;color:var(--muted);">--:--</span>
+        `;
+
           li.onclick = () => openDM(u);
           list.appendChild(li);
         });
@@ -654,15 +675,11 @@
           const li = document.getElementById(`user-${sender}`);
           if (li) li.style.borderLeft = "3px solid var(--accent2)";
         }
+        lastMessage[sender] = msg;
+        updatePreview(sender, msg, time);
       });
 
-      socket.on("dm_sent", ({ target, msg, time }) => {
-        if (!conversations[target]) conversations[target] = [];
-        conversations[target].push({ sender: ME, msg, time, mine: true });
-        if (mode === "dm" && dmTarget === target) {
-          // already rendered optimistically
-        }
-      });
+      socket.on("dm_sent", ({ target, msg, time }) => {});
       socket.on("broadcast_notice", ({ msg, time }) => {
         // Show in current message view if open
         const box = document.getElementById("messages");
@@ -744,6 +761,13 @@
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
       }
+      function updatePreview(user, msg, time) {
+        const li = document.getElementById(`user-${user}`);
+        if (!li) return;
+
+        li.querySelectorAll("span")[1].textContent = msg;
+        li.querySelectorAll("span")[2].textContent = time;
+      }
 
       function renderGroupList() {
         const gl = document.getElementById("group-list");
@@ -781,8 +805,12 @@
           li.classList.add("active");
           li.style.borderLeft = "";
         }
-        document.getElementById("chat-title").innerHTML =
-          `<span>${user}</span>`;
+        document.getElementById("chat-title").innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="avatar"></div>
+            <span>${user}</span>
+          </div>
+        `;
         document.getElementById("empty-state").style.display = "none";
         const box = document.getElementById("messages");
         box.style.display = "flex";
@@ -849,24 +877,44 @@
         input.focus();
         box.scrollTop = box.scrollHeight;
       }
-
       function sendMsg() {
         const input = document.getElementById("msg-input");
         const msg = input.value.trim();
         if (!msg) return;
+
         const time = new Date().toLocaleTimeString("en-US", {
           hour: "2-digit",
           minute: "2-digit",
         });
 
         if (mode === "dm" && dmTarget) {
+          const payload = { sender: ME, msg, time, mine: true };
+
           if (!conversations[dmTarget]) conversations[dmTarget] = [];
+          conversations[dmTarget].push(payload);
+
+          renderMsg(payload);
+
           socket.emit("send_dm", { target: dmTarget, msg });
         } else if (mode === "global") {
+          const payload = { sender: ME, msg, time, mine: true };
+
+          globalConversation.push(payload);
+          renderMsg({ ...payload, isGlobal: true, showSender: false });
+
           socket.emit("send_global", { msg });
         } else if (mode === "group" && groupTarget) {
+          const payload = { sender: ME, msg, time, mine: true };
+
+          if (!groupConversations[groupTarget])
+            groupConversations[groupTarget] = [];
+          groupConversations[groupTarget].push(payload);
+
+          renderMsg({ ...payload, isGroup: true });
+
           socket.emit("send_gmsg", { group: groupTarget, msg });
         }
+
         input.value = "";
       }
 
@@ -884,26 +932,54 @@
         isGroup = false,
       }) {
         const box = document.getElementById("messages");
+
         const wrap = document.createElement("div");
-        wrap.style.cssText = `display:flex;flex-direction:column;align-items:${mine ? "flex-end" : "flex-start"}`;
+        wrap.style.cssText = `
+          display:flex;
+          flex-direction:column;
+          align-items:${mine ? "flex-end" : "flex-start"};
+          margin: 2px 0;
+        `;
+
         let cls = mine ? "msg-sent" : "msg-recv";
-        if (isGlobal && !mine) cls = "msg-global";
         if (isGlobal && mine) cls = "msg-global-mine";
-        const div = document.createElement("div");
-        div.className = `msg ${cls}`;
-        if (showSender && !mine) {
+        if (isGlobal && !mine) cls = "msg-global";
+
+        if ((isGroup || isGlobal) && showSender && !mine) {
           const s = document.createElement("div");
           s.className = "msg-sender";
           s.textContent = sender;
           wrap.appendChild(s);
         }
+
+        const div = document.createElement("div");
+        div.className = `msg ${cls}`;
         div.textContent = msg;
-        const t = document.createElement("div");
-        t.className = "msg-time";
-        t.textContent = time.replace(/\[|\]/g, "");
+
+        const footer = document.createElement("div");
+        footer.style.cssText = `
+    display:flex;
+    justify-content:flex-end;
+    width:100%;
+  `;
+
+        const timeDiv = document.createElement("div");
+        timeDiv.style.cssText = `
+    font-size:12px;
+    color:var(--muted);
+    margin-top:4px;
+  `;
+
+        // remove [ ] if backend sends them
+        timeDiv.textContent = time ? time.replace(/\[|\]/g, "") : "";
+
+        footer.appendChild(timeDiv);
+
+        // assemble
         wrap.appendChild(div);
-        wrap.appendChild(t);
+        wrap.appendChild(footer);
         box.appendChild(wrap);
+
         box.scrollTop = box.scrollHeight;
       }
 
