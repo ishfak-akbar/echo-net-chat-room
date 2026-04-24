@@ -675,11 +675,12 @@
           const li = document.getElementById(`user-${sender}`);
           if (li) li.style.borderLeft = "3px solid var(--accent2)";
         }
-        lastMessage[sender] = msg;
-        updatePreview(sender, msg, time);
+        updateChatPreview(sender, msg, time);
       });
 
-      socket.on("dm_sent", ({ target, msg, time }) => {});
+      socket.on("dm_sent", ({ target, msg, time }) => {
+        updateChatPreview(target, msg, time);
+      });
       socket.on("broadcast_notice", ({ msg, time }) => {
         // Show in current message view if open
         const box = document.getElementById("messages");
@@ -761,12 +762,15 @@
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
       }
-      function updatePreview(user, msg, time) {
+      function updateChatPreview(user, msg, time) {
         const li = document.getElementById(`user-${user}`);
         if (!li) return;
 
-        li.querySelectorAll("span")[1].textContent = msg;
-        li.querySelectorAll("span")[2].textContent = time;
+        const spans = li.querySelectorAll("span");
+        if (spans.length >= 3) {
+          spans[1].textContent = msg;
+          spans[2].textContent = time;
+        }
       }
 
       function renderGroupList() {
