@@ -43,6 +43,9 @@
 
         --highlight: rgba(20, 184, 166, 0.15);
         --glow: rgba(20, 184, 166, 0.25);
+
+        --global-bg: #0d2b3a;
+        --global-bdr: rgba(79, 200, 255, 0.25);
       }
       body {
         background: var(--bg);
@@ -552,13 +555,14 @@
         <ul id="group-list"></ul>
       </div>
 
+      <div class="section-label">Global</div>
+      <div class="global-link" id="global-btn" onclick="openGlobal()">
+        🌐 Global Chat
+      </div>
+
       <div class="sidebar-footer">
         <div class="my-label">Profile</div>
         <div class="my-nick">{{ nickname }}</div>
-        <!-- Global chat link at the bottom -->
-        <div class="global-link" id="global-btn" onclick="openGlobal()">
-          🌐 Global Chat
-        </div>
       </div>
     </aside>
 
@@ -641,6 +645,7 @@
       });
 
       socket.on("dm", ({ sender, msg, time }) => {
+        if (sender === ME) return;
         if (!conversations[sender]) conversations[sender] = [];
         conversations[sender].push({ sender, msg, time, mine: false });
         if (mode === "dm" && dmTarget === sender) {
@@ -679,7 +684,7 @@
         }
       });
       socket.on("global_msg", ({ sender, msg, time }) => {
-        const mine = sender === ME;
+        const mine = sender?.toLowerCase() === ME?.toLowerCase();
         globalConversation.push({ sender, msg, time, mine });
         if (mode === "global") {
           renderMsg({
@@ -828,7 +833,7 @@
           li.style.borderLeft = "";
         }
         document.getElementById("chat-title").innerHTML =
-          `# <span>${gname}</span>`;
+          `<span>${gname}</span>`;
         document.getElementById("empty-state").style.display = "none";
         const box = document.getElementById("messages");
         box.style.display = "flex";
@@ -856,8 +861,6 @@
 
         if (mode === "dm" && dmTarget) {
           if (!conversations[dmTarget]) conversations[dmTarget] = [];
-          conversations[dmTarget].push({ sender: ME, msg, time, mine: true });
-          renderMsg({ sender: ME, msg, time, mine: true, showSender: false });
           socket.emit("send_dm", { target: dmTarget, msg });
         } else if (mode === "global") {
           socket.emit("send_global", { msg });
@@ -897,7 +900,7 @@
         div.textContent = msg;
         const t = document.createElement("div");
         t.className = "msg-time";
-        t.textContent = time;
+        t.textContent = time.replace(/\[|\]/g, "");
         wrap.appendChild(div);
         wrap.appendChild(t);
         box.appendChild(wrap);
