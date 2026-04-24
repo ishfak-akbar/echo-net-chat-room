@@ -71,7 +71,7 @@
       .hicon {
         width: 36px;
         height: 36px;
-        background: var(--danger);
+        border: 1px solid var(--accent);
         border-radius: 9px;
         display: flex;
         align-items: center;
@@ -83,7 +83,7 @@
         font-weight: 700;
       }
       .header h1 span {
-        color: var(--danger);
+        color: var(--accent);
       }
       .nav-links {
         display: flex;
@@ -113,9 +113,38 @@
         width: 100%;
         display: grid;
         grid-template-columns: 1fr 1fr;
+        grid-template-areas:
+          "users stats"
+          "bans log"
+          "broadcast broadcast";
         gap: 20px;
       }
+      .card:nth-child(1) {
+        grid-area: users;
+      }
+
+      .card:nth-child(2) {
+        grid-area: stats;
+      }
+
+      .card:nth-child(3) {
+        grid-area: bans;
+      }
+
+      .card:nth-child(4) {
+        grid-area: log;
+      }
+
+      .card-broadcast {
+        grid-area: broadcast;
+      }
       .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 24px;
+      }
+      .card-broadcast {
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 14px;
@@ -317,7 +346,6 @@
         <h1>Admin <span>Panel</span></h1>
       </div>
       <div class="nav-links">
-        <a href="/chat">→ Chat</a>
         <a href="/logout">Logout</a>
       </div>
     </div>
@@ -362,8 +390,7 @@
           </div>
         </div>
       </div>
-
-      <div class="card">
+      <div class="card-broadcast">
         <div class="card-title">📢 Broadcast to All</div>
         <div class="bc-form">
           <textarea
