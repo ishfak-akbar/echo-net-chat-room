@@ -305,12 +305,14 @@
         background: var(--msg-recv-bg);
         color: var(--msg-recv-text);
         border: 1px solid var(--border);
+        border-bottom-left-radius: 3px;
       }
 
       .msg-sent {
         background: var(--msg-sent-bg);
         color: var(--msg-sent-text);
         border: 1px solid rgba(20, 184, 166, 0.2);
+        border-bottom-right-radius: 3px;
       }
       .msg-global {
         align-self: flex-start;
@@ -901,21 +903,8 @@
 
           socket.emit("send_dm", { target: dmTarget, msg });
         } else if (mode === "global") {
-          const payload = { sender: ME, msg, time, mine: true };
-
-          globalConversation.push(payload);
-          renderMsg({ ...payload, isGlobal: true, showSender: false });
-
           socket.emit("send_global", { msg });
         } else if (mode === "group" && groupTarget) {
-          const payload = { sender: ME, msg, time, mine: true };
-
-          if (!groupConversations[groupTarget])
-            groupConversations[groupTarget] = [];
-          groupConversations[groupTarget].push(payload);
-
-          renderMsg({ ...payload, isGroup: true });
-
           socket.emit("send_gmsg", { group: groupTarget, msg });
         }
 
