@@ -70,6 +70,11 @@
         align-items: center;
         gap: 10px;
       }
+      .sidebar-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 10px 0;
+      }
       .logo-box {
         width: 34px;
         height: 34px;
@@ -113,6 +118,47 @@
         list-style: none;
         padding: 0 8px;
         overflow-y: auto;
+      }
+      #user-list {
+        flex: 1;
+      }
+
+      #groups-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      #group-list {
+        flex: 1;
+      }
+      .toggle-tabs {
+        display: flex;
+        gap: 8px;
+        padding: 8px 12px;
+      }
+
+      .tab {
+        flex: 1;
+        padding: 6px 0;
+        font-family: inherit;
+        font-size: 13px;
+        border-radius: 8px;
+        cursor: pointer;
+        border: 1px solid transparent;
+        background: var(--surface2);
+        color: var(--muted);
+        transition: 0.2s;
+      }
+
+      .tab.active {
+        border: 1px solid;
+        border-image: linear-gradient(135deg, #14b8a6, #0ea5e9) 1;
+        color: var(--text);
+      }
+
+      .tab:hover {
+        background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+        color: #fff;
       }
       #user-list {
         flex: 1;
@@ -321,16 +367,23 @@
         border-bottom-left-radius: 3px;
         color: #a0dcff;
       }
+      .msg-global {
+        align-self: flex-start;
+        background: linear-gradient(135deg, #0d2b3a, #123f55);
+        border: 1px solid var(--global-bdr);
+        color: #a0dcff;
+        border-radius: 12px;
+        padding: 9px 14px;
+        max-width: 68%;
+      }
+
       .msg-global-mine {
         align-self: flex-end;
-        background: #0a1f2e;
+        background: linear-gradient(135deg, #0a1f2e, #0d3a4f);
         border: 1px solid var(--global-bdr);
-        border-bottom-right-radius: 3px;
-      }
-      .msg-time {
-        font-size: 14px;
-        color: var(--muted);
-        margin-top: 3px;
+        border-radius: 12px;
+        padding: 9px 14px;
+        max-width: 68%;
       }
       .msg-sender {
         font-size: 14px;
@@ -505,8 +558,7 @@
         border: 1px solid var(--border) !important;
       }
       #groups-section {
-        border-top: 1px solid var(--border);
-        padding-top: 6px;
+        display: none;
       }
     </style>
   </head>
@@ -554,6 +606,14 @@
         <div class="logo-name">TCP<span>Chat</span></div>
       </div>
       <div class="section-label">Online — <span id="online-count">0</span></div>
+      <div class="toggle-tabs">
+        <button id="tab-chats" class="tab active" onclick="showChats()">
+          Chats
+        </button>
+        <button id="tab-groups" class="tab" onclick="showGroups()">
+          Groups
+        </button>
+      </div>
       <ul id="user-list"></ul>
 
       <div id="groups-section">
@@ -569,9 +629,12 @@
         🌐 Global Chat
       </div>
 
+      <div class="sidebar-divider"></div>
       <div class="sidebar-footer">
-        <div class="my-label">Profile</div>
-        <div class="my-nick">{{ nickname }}</div>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div class="avatar"></div>
+          <div class="my-nick">{{ nickname }}</div>
+        </div>
       </div>
     </aside>
 
@@ -785,7 +848,20 @@
           li.id = `group-${gname}`;
           if (mode === "group" && groupTarget === gname)
             li.classList.add("active");
-          li.innerHTML = `<span class="gdot"></span>${gname}`;
+          li.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+              <div class="avatar"></div>
+              <div style="display:flex;flex-direction:column;min-width:0;">
+                <span>${gname}</span>
+                <span style="font-size:12px;color:var(--muted);">
+                  ${groupConversations[gname]?.slice(-1)[0]?.msg || "No messages yet"}
+                </span>
+              </div>
+            </div>
+            <span style="font-size:12px;color:var(--muted);">
+              ${groupConversations[gname]?.slice(-1)[0]?.time || "--:--"}
+            </span>
+          `;
           li.onclick = () => openGroup(gname);
           gl.appendChild(li);
         });
@@ -975,6 +1051,21 @@
 
         box.scrollTop = box.scrollHeight;
       }
+      function showChats() {
+        document.getElementById("user-list").style.display = "block";
+        document.getElementById("groups-section").style.display = "none";
+
+        document.getElementById("tab-chats").classList.add("active");
+        document.getElementById("tab-groups").classList.remove("active");
+      }
+
+      function showGroups() {
+        document.getElementById("user-list").style.display = "none";
+        document.getElementById("groups-section").style.display = "block";
+
+        document.getElementById("tab-groups").classList.add("active");
+        document.getElementById("tab-chats").classList.remove("active");
+      }
 
       function openGroupModal() {
         document.getElementById("group-overlay").classList.add("show");
@@ -999,6 +1090,7 @@
         socket.emit("create_group", { name, members });
         closeGroupModal();
       }
+      showChats();
     </script>
   </body>
 </html>
