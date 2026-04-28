@@ -272,7 +272,13 @@ def handle_global(data):
     if msg and tcp:
         tcp.send(f'DM ALL {msg}\n'.encode('ascii'))
 
+@socketio.on('request_userlist')
+def send_userlist():
+    sid = request.sid
+    users = list(nick_to_sid.keys())
 
+    emit('userlist', {'users': users}, to=sid)
+    
 @socketio.on('kick_user')
 def handle_kick(data):
     sid = request.sid

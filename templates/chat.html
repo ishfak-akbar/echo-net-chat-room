@@ -584,7 +584,7 @@
         border: none;
       }
       .btn-create {
-        background: var(--accent2);
+        background: var(--accent);
         color: #fff;
       }
       .btn-cancel {
@@ -594,6 +594,97 @@
       }
       #groups-section {
         display: none;
+      }
+      .group-create-container {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        width: 100%;
+      }
+
+      .group-title {
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .group-input {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--bg);
+        color: var(--text);
+        font-size: 15px;
+        outline: none;
+      }
+
+      .member-section {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .member-label {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .member-list {
+        max-height: 180px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding-right: 4px;
+      }
+
+      .member-item {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 10px;
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+        text-align: left;
+      }
+
+      .member-item:hover {
+        background: var(--surface2);
+      }
+
+      .member-item input {
+        accent-color: var(--accent);
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        position: relative;
+        top: 0.5px;
+      }
+
+      .member-item span {
+        flex: 1;
+        text-align: left;
+        font-size: 15px;
+        color: var(--text);
+      }
+
+      .group-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 6px;
+      }
+
+      .group-actions button {
+        flex: 1;
+        padding: 9px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
       }
     </style>
   </head>
@@ -615,22 +706,30 @@
     <!-- Group creation modal -->
     <div class="overlay" id="group-overlay">
       <div class="gmodal">
-        <h3>➕ Create Group</h3>
-        <input
-          id="g-name"
-          type="text"
-          placeholder="Group name"
-          autocomplete="off"
-        />
-        <textarea
-          id="g-members"
-          placeholder="Members (comma-separated nicknames)"
-        ></textarea>
-        <div class="gmodal-btns">
-          <button class="btn-cancel" onclick="closeGroupModal()">Cancel</button>
-          <button class="btn-create" onclick="submitCreateGroup()">
-            Create
-          </button>
+        <div class="group-create-container">
+          <h3 class="group-title">➕ Create Group</h3>
+
+          <input
+            id="g-name"
+            type="text"
+            class="group-input"
+            placeholder="Enter group name..."
+            autocomplete="off"
+          />
+
+          <div class="member-section">
+            <div class="member-label">Select Members</div>
+            <div id="member-list" class="member-list"></div>
+          </div>
+
+          <div class="group-actions">
+            <button class="btn-cancel" onclick="closeGroupModal()">
+              Cancel
+            </button>
+            <button class="btn-create" onclick="submitCreateGroup()">
+              Create
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -730,6 +829,12 @@
         const list = document.getElementById("user-list");
         const count = document.getElementById("online-count");
         const others = users.filter(Boolean).filter((u) => u !== ME);
+
+        if (
+          document.getElementById("group-overlay").classList.contains("show")
+        ) {
+          renderMemberChecklist(others);
+        }
 
         count.textContent = others.length;
         list.innerHTML = "";
@@ -1108,26 +1213,50 @@
 
       function openGroupModal() {
         document.getElementById("group-overlay").classList.add("show");
-        document.getElementById("g-name").focus();
+        socket.emit("request_userlist");
       }
       function closeGroupModal() {
         document.getElementById("group-overlay").classList.remove("show");
         document.getElementById("g-name").value = "";
-        document.getElementById("g-members").value = "";
       }
       function submitCreateGroup() {
         const name = document.getElementById("g-name").value.trim();
-        const raw = document.getElementById("g-members").value;
-        const members = raw
-          .split(",")
-          .map((m) => m.trim())
-          .filter(Boolean);
+        const checkboxes = document.querySelectorAll(
+          "#member-list input[type='checkbox']",
+        );
+        const members = Array.from(checkboxes)
+          .filter((cb) => cb.checked)
+          .map((cb) => cb.value);
+
         if (!name) {
           alert("Group name required.");
           return;
         }
         socket.emit("create_group", { name, members });
         closeGroupModal();
+      }
+      function renderMemberChecklist(users) {
+        const box = document.getElementById("member-list");
+        box.innerHTML = "";
+
+        users.forEach((u) => {
+          if (u === ME) return;
+
+          const row = document.createElement("label");
+          row.className = "member-item";
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.value = u;
+
+          const nameSpan = document.createElement("span");
+          nameSpan.textContent = u;
+
+          row.appendChild(checkbox);
+          row.appendChild(nameSpan);
+
+          box.appendChild(row);
+        });
       }
       showChats();
     </script>
