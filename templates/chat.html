@@ -686,6 +686,41 @@
         cursor: pointer;
         border: none;
       }
+
+      #all-user-list {
+        margin: 20px;
+        flex: 1;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        display: none;
+        flex-direction: column;
+        padding: 10px;
+        gap: 8px;
+        overflow-y: auto;
+      }
+      #all-user-list li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-radius: 14px;
+        cursor: pointer;
+        transition: background 0.15s;
+        background: transparent;
+        border: 1px solid transparent;
+      }
+      #all-user-list li:hover {
+        background: var(--surface2);
+        border-color: var(--border);
+      }
+      #all-user-list li.active {
+        background: var(--highlight);
+        border-color: var(--accent);
+      }
     </style>
   </head>
   <body>
@@ -739,16 +774,17 @@
         <div class="logo-box">⚡</div>
         <div class="logo-name">Echo<span>Net</span></div>
       </div>
-      <div class="section-label">Online — <span id="online-count">0</span></div>
       <div class="toggle-tabs">
-        <button id="tab-chats" class="tab active" onclick="showChats()">
-          Chats
+        <button id="tab-online" class="tab active" onclick="showOnline()">
+          Online
         </button>
+        <button id="tab-all" class="tab" onclick="showAll()">All</button>
         <button id="tab-groups" class="tab" onclick="showGroups()">
           Groups
         </button>
       </div>
       <ul id="user-list"></ul>
+      <ul id="all-user-list"></ul>
 
       <div id="groups-section">
         <div class="section-label">
@@ -800,16 +836,17 @@
     </main>
 
     <script>
-      const lastMessage = {};
       const socket = io();
       const ME = "{{ nickname }}";
       let mode = null; // 'dm', 'global', 'group'
       let dmTarget = null;
       let groupTarget = null;
-      const conversations = {}; // dm conversations keyed by nick
-      const groupConversations = {}; // group conversations keyed by group name
+      const conversations = {};
+      const groupConversations = {};
       const globalConversation = [];
-      let myGroups = {}; // group_name -> [members]
+      let myGroups = {};
+      let onlineUsersList = [];
+      let allUsersList = [];
 
       socket.on("connected", () => {});
 
@@ -819,46 +856,73 @@
       socket.on("kicked", () =>
         document.getElementById("kicked-overlay").classList.add("show"),
       );
-      socket.on("server_error", () => console.error("Server error"));
-      socket.on("dupe", () => {
-        alert("Nickname already in use. Please log in again.");
+      socket.on("server_error", () => {
+        alert("Connection lost due to a server error. Please reconnect.");
         window.location.href = "/";
       });
 
-      socket.on("userlist", ({ users }) => {
-        const list = document.getElementById("user-list");
-        const count = document.getElementById("online-count");
-        const others = users.filter(Boolean).filter((u) => u !== ME);
+      // FIX 1: Handle online_users event properly
+      socket.on("online_users", ({ users }) => {
+        onlineUsersList = users.filter((u) => u && u !== ME);
+        if (document.getElementById("user-list").style.display !== "none") {
+          renderUserList("user-list", onlineUsersList);
+        }
+      });
 
+      // FIX 2: Handle all_users event properly
+      socket.on("all_users", ({ users }) => {
+        allUsersList = users.filter((u) => u && u !== ME);
+        if (document.getElementById("all-user-list").style.display === "flex") {
+          renderUserList("all-user-list", allUsersList);
+        }
+      });
+
+      // FIX 3: Also handle userlist for group creation
+      socket.on("userlist", ({ users }) => {
+        const others = users.filter((u) => u && u !== ME);
         if (
           document.getElementById("group-overlay").classList.contains("show")
         ) {
           renderMemberChecklist(others);
         }
+      });
 
-        count.textContent = others.length;
+      function renderUserList(listId, users) {
+        const list = document.getElementById(listId);
+        if (!list) return;
         list.innerHTML = "";
-        others.forEach((u) => {
+
+        if (users.length === 0) {
           const li = document.createElement("li");
-          li.id = `user-${u}`;
+          li.className = "empty";
+          li.textContent = "No users available";
+          li.style.justifyContent = "center";
+          li.style.cursor = "default";
+          list.appendChild(li);
+          return;
+        }
 
+        users.forEach((u) => {
+          const li = document.createElement("li");
+          li.id = `${listId}-${u}`;
           li.innerHTML = `
-          <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-            <div class="avatar"></div>
-            <div style="display:flex;flex-direction:column;min-width:0;">
-              <span>${u}</span>
-              <span style="font-size:12px;color:var(--muted);">
-                ${lastMessage[u] || "No messages yet"}
-              </span>
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+              <div class="avatar"></div>
+              <div style="display:flex;flex-direction:column;min-width:0;">
+                <span>${u}</span>
+                <span style="font-size:12px;color:var(--muted);">
+                  ${conversations[u]?.slice(-1)[0]?.msg || "No messages yet"}
+                </span>
+              </div>
             </div>
-          </div>
-          <span style="font-size:12px;color:var(--muted);">--:--</span>
-        `;
-
+            <span style="font-size:12px;color:var(--muted);">
+              ${conversations[u]?.slice(-1)[0]?.time || "--:--"}
+            </span>
+          `;
           li.onclick = () => openDM(u);
           list.appendChild(li);
         });
-      });
+      }
 
       socket.on("grouplist", ({ groups }) => {
         myGroups = groups;
@@ -877,7 +941,9 @@
         if (mode === "dm" && dmTarget === sender) {
           renderMsg({ sender, msg, time, mine: false, showSender: false });
         } else {
-          const li = document.getElementById(`user-${sender}`);
+          const li =
+            document.getElementById(`user-list-${sender}`) ||
+            document.getElementById(`all-user-list-${sender}`);
           if (li) li.style.borderLeft = "3px solid var(--accent2)";
         }
         updateChatPreview(sender, msg, time);
@@ -886,8 +952,8 @@
       socket.on("dm_sent", ({ target, msg, time }) => {
         updateChatPreview(target, msg, time);
       });
+
       socket.on("broadcast_notice", ({ msg, time }) => {
-        // Show in current message view if open
         const box = document.getElementById("messages");
         if (box && box.style.display !== "none") {
           const div = document.createElement("div");
@@ -897,7 +963,6 @@
           box.appendChild(div);
           box.scrollTop = box.scrollHeight;
         } else {
-          // If no chat is open, show a visible alert banner
           const banner = document.createElement("div");
           banner.style.cssText =
             "position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#0d2b3a;border:1px solid #4fc8ff;color:#4fc8ff;padding:10px 22px;border-radius:12px;font-size:12px;z-index:999;";
@@ -906,6 +971,7 @@
           setTimeout(() => banner.remove(), 5000);
         }
       });
+
       socket.on("global_msg", ({ sender, msg, time }) => {
         const mine = sender?.toLowerCase() === ME?.toLowerCase();
         globalConversation.push({ sender, msg, time, mine });
@@ -919,7 +985,6 @@
             isGlobal: true,
           });
         } else {
-          // Always show admin broadcasts as a system notice in whatever view is open
           if (sender === "admin" || sender.startsWith("admin")) {
             const box = document.getElementById("messages");
             if (box && box.style.display !== "none") {
@@ -931,7 +996,6 @@
               box.scrollTop = box.scrollHeight;
             }
           }
-          // Highlight the Global Chat button
           const btn = document.getElementById("global-btn");
           if (btn) btn.style.boxShadow = "0 0 0 2px var(--accent)";
         }
@@ -956,6 +1020,79 @@
         }
       });
 
+      socket.on("offline_dm_history", ({ sender, msgs }) => {
+        if (!conversations[sender]) conversations[sender] = [];
+        conversations[sender] = [];
+        msgs.forEach(([s, receiver, msg, time]) => {
+          const mine = s === ME;
+          conversations[sender].push({ sender: s, msg, time, mine });
+        });
+        if (mode === "dm" && dmTarget === sender) {
+          const box = document.getElementById("messages");
+          box.innerHTML = "";
+          conversations[sender].forEach((m) =>
+            renderMsg({ ...m, showSender: false }),
+          );
+          box.scrollTop = box.scrollHeight;
+        }
+      });
+
+      socket.on("load_global", ({ msgs }) => {
+        msgs.forEach(([sender, msg, time]) => {
+          const mine = sender === ME;
+          globalConversation.push({ sender, msg, time, mine });
+        });
+      });
+
+      socket.on("chat_history", ({ msgs }) => {
+        if (!dmTarget) return;
+        if (!conversations[dmTarget]) conversations[dmTarget] = [];
+        else conversations[dmTarget] = [];
+        const box = document.getElementById("messages");
+        box.innerHTML = "";
+        msgs.forEach(([sender, receiver, msg, time]) => {
+          const mine = sender === ME;
+          const displaySender = mine ? ME : sender;
+          conversations[dmTarget].push({
+            sender: displaySender,
+            msg,
+            time,
+            mine,
+            showSender: false,
+          });
+          renderMsg({
+            sender: displaySender,
+            msg,
+            time,
+            mine,
+            showSender: false,
+          });
+        });
+        box.scrollTop = box.scrollHeight;
+      });
+
+      socket.on("group_history", ({ msgs }) => {
+        if (!groupTarget) return;
+        if (!groupConversations[groupTarget])
+          groupConversations[groupTarget] = [];
+        else groupConversations[groupTarget] = [];
+        const box = document.getElementById("messages");
+        box.innerHTML = "";
+        msgs.forEach(([sender, msg, time]) => {
+          const mine = sender === ME;
+          groupConversations[groupTarget].push({ sender, msg, time, mine });
+          renderMsg({
+            sender,
+            msg,
+            time,
+            mine,
+            showSender: !mine,
+            isGroup: true,
+          });
+        });
+        box.scrollTop = box.scrollHeight;
+      });
+
       socket.on("dmerr", ({ msg }) => showErr(msg));
       socket.on("grperr", ({ msg }) => showErr(msg));
 
@@ -967,15 +1104,18 @@
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
       }
-      function updateChatPreview(user, msg, time) {
-        const li = document.getElementById(`user-${user}`);
-        if (!li) return;
 
+      function updateChatPreview(user, msg, time) {
+        const li =
+          document.getElementById(`user-list-${user}`) ||
+          document.getElementById(`all-user-list-${user}`);
+        if (!li) return;
         const spans = li.querySelectorAll("span");
-        if (spans.length >= 3) {
+        if (spans.length >= 2) {
           spans[1].textContent = msg;
-          spans[2].textContent = time;
         }
+        const timeSpan = li.querySelector("span:last-child");
+        if (timeSpan) timeSpan.textContent = time;
       }
 
       function renderGroupList() {
@@ -1008,12 +1148,15 @@
       }
 
       function setActiveNone() {
-        document.querySelectorAll("#user-list li").forEach((li) => {
-          li.classList.remove("active");
-        });
-        document.querySelectorAll("#group-list li").forEach((li) => {
-          li.classList.remove("active");
-        });
+        document
+          .querySelectorAll("#user-list li")
+          .forEach((li) => li.classList.remove("active"));
+        document
+          .querySelectorAll("#all-user-list li")
+          .forEach((li) => li.classList.remove("active"));
+        document
+          .querySelectorAll("#group-list li")
+          .forEach((li) => li.classList.remove("active"));
         document.getElementById("global-btn").classList.remove("active");
         document.getElementById("global-btn").style.boxShadow = "";
       }
@@ -1022,7 +1165,9 @@
         mode = "dm";
         dmTarget = user;
         setActiveNone();
-        const li = document.getElementById(`user-${user}`);
+        const li =
+          document.getElementById(`user-list-${user}`) ||
+          document.getElementById(`all-user-list-${user}`);
         if (li) {
           li.classList.add("active");
           li.style.borderLeft = "";
@@ -1037,16 +1182,14 @@
         const box = document.getElementById("messages");
         box.style.display = "flex";
         box.innerHTML = "";
-        if (conversations[user])
-          conversations[user].forEach((m) =>
-            renderMsg({ ...m, showSender: false }),
-          );
+
+        socket.emit("load_chat", { target: user });
+
         const input = document.getElementById("msg-input");
         input.placeholder = `Message ${user}...`;
         input.disabled = false;
         document.querySelector(".send-btn").disabled = false;
         input.focus();
-        box.scrollTop = box.scrollHeight;
       }
 
       function openGlobal() {
@@ -1092,42 +1235,35 @@
         const box = document.getElementById("messages");
         box.style.display = "flex";
         box.innerHTML = "";
-        if (groupConversations[gname])
-          groupConversations[gname].forEach((m) =>
-            renderMsg({ ...m, showSender: !m.mine, isGroup: true }),
-          );
+
+        socket.emit("load_group_history", { group: gname });
+
         const input = document.getElementById("msg-input");
         input.placeholder = `Message #${gname}...`;
         input.disabled = false;
         document.querySelector(".send-btn").disabled = false;
         input.focus();
-        box.scrollTop = box.scrollHeight;
       }
+
       function sendMsg() {
         const input = document.getElementById("msg-input");
         const msg = input.value.trim();
         if (!msg) return;
 
-        const time = new Date().toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-
         if (mode === "dm" && dmTarget) {
-          const payload = { sender: ME, msg, time, mine: true };
-
+          const time = new Date().toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
           if (!conversations[dmTarget]) conversations[dmTarget] = [];
-          conversations[dmTarget].push(payload);
-
-          renderMsg(payload);
-
+          conversations[dmTarget].push({ sender: ME, msg, time, mine: true });
+          renderMsg({ sender: ME, msg, time, mine: true, showSender: false });
           socket.emit("send_dm", { target: dmTarget, msg });
         } else if (mode === "global") {
           socket.emit("send_global", { msg });
         } else if (mode === "group" && groupTarget) {
           socket.emit("send_gmsg", { group: groupTarget, msg });
         }
-
         input.value = "";
       }
 
@@ -1145,14 +1281,8 @@
         isGroup = false,
       }) {
         const box = document.getElementById("messages");
-
         const wrap = document.createElement("div");
-        wrap.style.cssText = `
-          display:flex;
-          flex-direction:column;
-          align-items:${mine ? "flex-end" : "flex-start"};
-          margin: 2px 0;
-        `;
+        wrap.style.cssText = `display:flex;flex-direction:column;align-items:${mine ? "flex-end" : "flex-start"};margin:2px 0;`;
 
         let cls = mine ? "msg-sent" : "msg-recv";
         if (isGlobal && mine) cls = "msg-global-mine";
@@ -1170,55 +1300,56 @@
         div.textContent = msg;
 
         const footer = document.createElement("div");
-        footer.style.cssText = `
-    display:flex;
-    justify-content:flex-end;
-    width:100%;
-  `;
-
+        footer.style.cssText = `display:flex;justify-content:flex-end;width:100%;`;
         const timeDiv = document.createElement("div");
-        timeDiv.style.cssText = `
-    font-size:12px;
-    color:var(--muted);
-    margin-top:4px;
-  `;
-
-        // remove [ ] if backend sends them
+        timeDiv.style.cssText = `font-size:12px;color:var(--muted);margin-top:4px;`;
         timeDiv.textContent = time ? time.replace(/\[|\]/g, "") : "";
-
         footer.appendChild(timeDiv);
-
-        // assemble
         wrap.appendChild(div);
         wrap.appendChild(footer);
         box.appendChild(wrap);
-
         box.scrollTop = box.scrollHeight;
       }
-      function showChats() {
-        document.getElementById("user-list").style.display = "block";
-        document.getElementById("groups-section").style.display = "none";
 
-        document.getElementById("tab-chats").classList.add("active");
+      function showOnline() {
+        document.getElementById("user-list").style.display = "flex";
+        document.getElementById("all-user-list").style.display = "none";
+        document.getElementById("groups-section").style.display = "none";
+        document.getElementById("tab-online").classList.add("active");
+        document.getElementById("tab-all").classList.remove("active");
         document.getElementById("tab-groups").classList.remove("active");
+        renderUserList("user-list", onlineUsersList);
+      }
+
+      function showAll() {
+        document.getElementById("user-list").style.display = "none";
+        document.getElementById("all-user-list").style.display = "flex";
+        document.getElementById("groups-section").style.display = "none";
+        document.getElementById("tab-online").classList.remove("active");
+        document.getElementById("tab-all").classList.add("active");
+        document.getElementById("tab-groups").classList.remove("active");
+        renderUserList("all-user-list", allUsersList);
       }
 
       function showGroups() {
         document.getElementById("user-list").style.display = "none";
+        document.getElementById("all-user-list").style.display = "none";
         document.getElementById("groups-section").style.display = "block";
-
         document.getElementById("tab-groups").classList.add("active");
-        document.getElementById("tab-chats").classList.remove("active");
+        document.getElementById("tab-online").classList.remove("active");
+        document.getElementById("tab-all").classList.remove("active");
       }
 
       function openGroupModal() {
         document.getElementById("group-overlay").classList.add("show");
         socket.emit("request_userlist");
       }
+
       function closeGroupModal() {
         document.getElementById("group-overlay").classList.remove("show");
         document.getElementById("g-name").value = "";
       }
+
       function submitCreateGroup() {
         const name = document.getElementById("g-name").value.trim();
         const checkboxes = document.querySelectorAll(
@@ -1227,7 +1358,6 @@
         const members = Array.from(checkboxes)
           .filter((cb) => cb.checked)
           .map((cb) => cb.value);
-
         if (!name) {
           alert("Group name required.");
           return;
@@ -1235,30 +1365,32 @@
         socket.emit("create_group", { name, members });
         closeGroupModal();
       }
+
       function renderMemberChecklist(users) {
         const box = document.getElementById("member-list");
         box.innerHTML = "";
-
         users.forEach((u) => {
           if (u === ME) return;
-
           const row = document.createElement("label");
           row.className = "member-item";
-
           const checkbox = document.createElement("input");
           checkbox.type = "checkbox";
           checkbox.value = u;
-
           const nameSpan = document.createElement("span");
           nameSpan.textContent = u;
-
           row.appendChild(checkbox);
           row.appendChild(nameSpan);
-
           box.appendChild(row);
         });
       }
-      showChats();
+
+      // FIX 4: Initialize on page load - request both lists
+      socket.emit("get_users");
+      setInterval(() => {
+        socket.emit("get_users");
+      }, 5000);
+
+      showOnline();
     </script>
   </body>
 </html>

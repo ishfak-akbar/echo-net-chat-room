@@ -1,6 +1,13 @@
 import threading
 import socket
 from datetime import datetime
+import database as db
+
+try:
+    db.init_db()
+except Exception as e:
+    print(f"[FATAL] Could not initialize database: {e}")
+    exit(1)
 
 host = '127.0.0.1'
 port = 55555
@@ -12,7 +19,6 @@ server.listen()
 
 clients = []
 nicknames = []
-groups = {}  # group_name -> set of nicknames
 
 def get_time():
     return datetime.now().strftime('[%I:%M %p]')
@@ -34,8 +40,18 @@ def broadcast_userlist():
 
 def broadcast_grouplist():
     """Push group list to all clients."""
+    # Get groups from database
+    groups_data = {}
+    for nick in nicknames:
+        user_groups = db.get_user_groups(nick)
+        for group_name, members in user_groups.items():
+            if group_name not in groups_data:
+                groups_data[group_name] = set(members)
+            else:
+                groups_data[group_name].update(members)
+    
     group_data = ';'.join(
-        f'{name}:{",".join(members)}' for name, members in groups.items()
+        f'{name}:{",".join(members)}' for name, members in groups_data.items()
     )
     for client in clients:
         try:
@@ -49,6 +65,7 @@ def kick_user(name):
         c = clients[idx]
         clients.remove(c)
         nicknames.remove(name)
+        db.set_offline(name)
         try:
             c.send('KICKED\n'.encode('ascii'))
             c.close()
@@ -79,8 +96,7 @@ def handle(client):
                 if sender_nick == 'admin':
                     name_to_ban = decoded[4:].strip()
                     kick_user(name_to_ban)
-                    with open('bans.txt', 'a') as f:
-                        f.write(f'{name_to_ban}\n')
+                    db.add_banned_user(name_to_ban)
                     print(f'{name_to_ban} was banned!')
                 else:
                     client.send('REFUSED\n'.encode('ascii'))
@@ -98,13 +114,12 @@ def handle(client):
                                 c.send(f'GLOBAL|{sender_nick}|{dm_message}|{time}\n'.encode('ascii'))
                             except:
                                 pass
-                    elif target_nick in nicknames:
+                        db.save_global(sender_nick, dm_message)
+                    if target_nick in nicknames:
                         target_client = clients[nicknames.index(target_nick)]
                         target_client.send(f'DM|{sender_nick}|{dm_message}|{time}\n'.encode('ascii'))
-                        # Echo back to sender
-                        client.send(f'DM_SENT|{target_nick}|{dm_message}|{time}\n'.encode('ascii'))
-                    else:
-                        client.send(f'DMERR User "{target_nick}" not found.\n'.encode('ascii'))
+                    db.save_dm(sender_nick, target_nick, dm_message)
+                    client.send(f'DM_SENT|{target_nick}|{dm_message}|{time}\n'.encode('ascii'))
 
             # Create group
             elif decoded.startswith('MKGROUP '):
@@ -113,8 +128,11 @@ def handle(client):
                 members_raw = parts[1].strip() if len(parts) > 1 else ''
                 members = set(m.strip() for m in members_raw.split(',') if m.strip())
                 members.add(sender_nick)  # creator always in group
-                if group_name not in groups:
-                    groups[group_name] = members
+                
+                # Check if group exists in database
+                existing_groups = db.get_user_groups(sender_nick)
+                if group_name not in existing_groups:
+                    db.save_group(group_name, list(members))
                     broadcast_grouplist()
                     # Notify members
                     for m in members:
@@ -133,8 +151,10 @@ def handle(client):
                 if len(parts) == 2:
                     group_name, gm_message = parts
                     time = get_time()
-                    if group_name in groups and sender_nick in groups[group_name]:
-                        for m in groups[group_name]:
+                    user_groups = db.get_user_groups(sender_nick)
+                    if group_name in user_groups and sender_nick in user_groups[group_name]:
+                        db.save_group_message(group_name, sender_nick, gm_message)
+                        for m in user_groups[group_name]:
                             if m in nicknames:
                                 mc = clients[nicknames.index(m)]
                                 try:
@@ -147,37 +167,28 @@ def handle(client):
             elif decoded.startswith('UNBAN'):
                 if nicknames[clients.index(client)] == 'admin':
                     name_to_unban = decoded[6:].strip()
-                    try:
-                        with open('bans.txt', 'r') as f:
-                            bans = f.readlines()
-                        with open('bans.txt', 'w') as f:
-                            for ban in bans:
-                                if ban.strip() != name_to_unban:
-                                    f.write(ban)
-                        client.send(f'UNBAN_OK {name_to_unban}\n'.encode('ascii'))
-                        print(f'{name_to_unban} was unbanned!')
-                    except:
-                        pass
+                    db.remove_banned_user(name_to_unban)
+                    client.send(f'UNBAN_OK {name_to_unban}\n'.encode('ascii'))
+                    print(f'{name_to_unban} was unbanned!')
                 else:
                     client.send('REFUSED\n'.encode('ascii'))
+                    
             elif decoded == 'BANLIST':
                 if nicknames[clients.index(client)] == 'admin':
-                    try:
-                        with open('bans.txt', 'r') as f:
-                            bans = [b.strip() for b in f.readlines() if b.strip()]
-                        ban_list = ','.join(bans) if bans else ''
-                        client.send(f'BANLIST {ban_list}\n'.encode('ascii'))
-                    except:
-                        client.send('BANLIST \n'.encode('ascii'))
+                    bans = db.get_banned_users()
+                    ban_list = ','.join(bans) if bans else ''
+                    client.send(f'BANLIST {ban_list}\n'.encode('ascii'))
                         
             elif decoded == 'USERLIST':
                 user_list = ','.join(nicknames)
                 client.send(f'USERLIST {user_list}\n'.encode('ascii'))
 
-        except:
+        except Exception as e:
+            print(f"Error handling client: {e}")
             if client in clients:
                 idx = clients.index(client)
                 nick = nicknames[idx]
+                db.set_offline(nick)
                 clients.remove(client)
                 nicknames.remove(nick)
                 try:
@@ -188,7 +199,6 @@ def handle(client):
             break
 
 def receive():
-    open('bans.txt', 'a').close()
     while True:
         client, address = server.accept()
         print(f"Connected with {str(address)}")
@@ -196,10 +206,8 @@ def receive():
         client.send("Nick\n".encode('ascii'))
         nickname = client.recv(1024).decode('ascii').strip()
 
-        # Check bans
-        with open('bans.txt', 'r') as f:
-            bans = [b.strip() for b in f.readlines()]
-        if nickname in bans:
+        # Check bans from database
+        if db.is_banned(nickname):
             client.send('BAN\n'.encode('ascii'))
             client.close()
             continue
@@ -227,6 +235,9 @@ def receive():
 
         nicknames.append(nickname)
         clients.append(client)
+        
+        db.add_user(nickname)
+        db.set_online(nickname)
 
         print(f'Nickname: {nickname}')
         client.send('Connected\n'.encode('ascii'))

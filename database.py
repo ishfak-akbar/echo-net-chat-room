@@ -1,0 +1,221 @@
+import sqlite3
+from datetime import datetime
+import threading
+
+DB_NAME = "echonet.db"
+
+_local = threading.local()
+
+def get_conn():
+    return sqlite3.connect(DB_NAME, check_same_thread=False)
+
+def init_db():
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("""CREATE TABLE IF NOT EXISTS users (
+        nickname TEXT PRIMARY KEY
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS online_users (
+        nickname TEXT PRIMARY KEY
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender TEXT,
+        receiver TEXT,
+        message TEXT,
+        type TEXT,
+        time TEXT
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS groups_table (
+        group_name TEXT,
+        member TEXT,
+        PRIMARY KEY (group_name, member)
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS group_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_name TEXT,
+        sender TEXT,
+        message TEXT,
+        time TEXT
+    )""")
+
+    c.execute("""CREATE TABLE IF NOT EXISTS global_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sender TEXT,
+        message TEXT,
+        time TEXT
+    )""")
+    
+    c.execute("""CREATE TABLE IF NOT EXISTS banned_users (
+        nickname TEXT PRIMARY KEY,
+        banned_at TEXT
+    )""")
+
+    conn.commit()
+    conn.close()
+
+def now():
+    return datetime.now().strftime("[%I:%M %p]")
+
+# USERS
+def add_user(nick):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO users VALUES (?)", (nick,))
+    conn.commit()
+    conn.close()
+
+def set_online(nick):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO online_users VALUES (?)", (nick,))
+    conn.commit()
+    conn.close()
+
+def set_offline(nick):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("DELETE FROM online_users WHERE nickname=?", (nick,))
+    conn.commit()
+    conn.close()
+
+def get_all_users():
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT nickname FROM users")
+    return [r[0] for r in c.fetchall()]
+
+def get_online_users():
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT nickname FROM online_users")
+    return [r[0] for r in c.fetchall()]
+
+# Banned Users
+def add_banned_user(nick):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO banned_users VALUES (?, ?)", (nick, now()))
+    conn.commit()
+    conn.close()
+
+def remove_banned_user(nick):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("DELETE FROM banned_users WHERE nickname=?", (nick,))
+    conn.commit()
+    conn.close()
+
+def get_banned_users():
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT nickname FROM banned_users")
+    return [r[0] for r in c.fetchall()]
+
+def is_banned(nick):
+    with sqlite3.connect(DB_NAME) as conn:
+        c = conn.cursor()
+        c.execute("SELECT 1 FROM banned_users WHERE nickname=?", (nick,))
+        result = c.fetchone()
+    return result is not None
+
+# Groups
+def save_group(group_name, members):
+    conn = get_conn()
+    c = conn.cursor()
+    for member in members:
+        c.execute("INSERT OR IGNORE INTO groups_table VALUES (?, ?)", (group_name, member))
+    conn.commit()
+    conn.close()
+
+def get_user_groups(nick):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT group_name FROM groups_table WHERE member=?", (nick,))
+    groups = {}
+    for (group_name,) in c.fetchall():
+        c2 = conn.cursor()
+        c2.execute("SELECT member FROM groups_table WHERE group_name=?", (group_name,))
+        members = [m[0] for m in c2.fetchall()]
+        groups[group_name] = members
+    conn.close()
+    return groups
+
+def delete_group(group_name):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("DELETE FROM groups_table WHERE group_name=?", (group_name,))
+    conn.commit()
+    conn.close()
+
+def save_group_message(group_name, sender, message):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("INSERT INTO group_messages (group_name, sender, message, time) VALUES (?, ?, ?, ?)",
+              (group_name, sender, message, now()))
+    conn.commit()
+    conn.close()
+
+def get_group_history(group_name):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT sender, message, time FROM group_messages WHERE group_name=? ORDER BY id ASC", (group_name,))
+    result = c.fetchall()
+    conn.close()
+    return result
+
+# MESSAGES
+def save_dm(sender, receiver, msg):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("""INSERT INTO messages(sender, receiver, message, type, time)
+                 VALUES (?, ?, ?, 'dm', ?)""",
+              (sender, receiver, msg, now()))
+    conn.commit()
+    conn.close()
+
+def save_global(sender, msg):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("""INSERT INTO global_messages(sender, message, time)
+                 VALUES (?, ?, ?)""",
+              (sender, msg, now()))
+    conn.commit()
+    conn.close()
+
+def get_dm_history(user1, user2):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("""SELECT sender, receiver, message, time FROM messages
+                 WHERE (sender=? AND receiver=?)
+                 OR (sender=? AND receiver=?)
+                 ORDER BY id ASC""",
+              (user1, user2, user2, user1))
+    result = c.fetchall()
+    conn.close()
+    return result
+
+def get_global_history():
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT sender, message, time FROM global_messages ORDER BY id ASC")
+    result = c.fetchall()
+    conn.close()
+    return result
+
+def get_dm_senders(nick):
+    with sqlite3.connect(DB_NAME) as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT DISTINCT sender FROM messages
+            WHERE receiver=? AND sender!=?
+            UNION
+            SELECT DISTINCT receiver FROM messages
+            WHERE sender=? AND receiver!=?
+        """, (nick, nick, nick, nick))
+        return [r[0] for r in c.fetchall()]
