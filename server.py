@@ -120,6 +120,18 @@ def handle(client):
                         target_client.send(f'DM|{sender_nick}|{dm_message}|{time}\n'.encode('ascii'))
                     db.save_dm(sender_nick, target_nick, dm_message)
                     client.send(f'DM_SENT|{target_nick}|{dm_message}|{time}\n'.encode('ascii'))
+            
+            elif decoded.startswith('MARK_READ '):
+                target_nick = decoded[10:].strip()
+                current_user = sender_nick
+                db.mark_dm_as_read(current_user, target_nick)
+
+                if target_nick in nicknames:
+                    target_client = clients[nicknames.index(target_nick)]
+                    try:
+                        target_client.send(f'READ_RECEIPT|{current_user}\n'.encode('ascii'))
+                    except:
+                        pass
 
             # Create group
             elif decoded.startswith('MKGROUP '):

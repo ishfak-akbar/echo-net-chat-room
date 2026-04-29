@@ -56,6 +56,16 @@ def init_db():
         banned_at TEXT
     )""")
 
+    try:
+        c.execute("ALTER TABLE messages ADD COLUMN read INTEGER DEFAULT 0")
+    except:
+        pass
+    
+    try:
+        c.execute("ALTER TABLE messages ADD COLUMN read_at TEXT")
+    except:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -173,8 +183,8 @@ def get_group_history(group_name):
 def save_dm(sender, receiver, msg):
     conn = get_conn()
     c = conn.cursor()
-    c.execute("""INSERT INTO messages(sender, receiver, message, type, time)
-                 VALUES (?, ?, ?, 'dm', ?)""",
+    c.execute("""INSERT INTO messages(sender, receiver, message, type, time, read) 
+                 VALUES (?, ?, ?, 'dm', ?, 0)""",
               (sender, receiver, msg, now()))
     conn.commit()
     conn.close()
@@ -191,7 +201,8 @@ def save_global(sender, msg):
 def get_dm_history(user1, user2):
     conn = get_conn()
     c = conn.cursor()
-    c.execute("""SELECT sender, receiver, message, time FROM messages
+    c.execute("""SELECT sender, receiver, message, time, read 
+                 FROM messages 
                  WHERE (sender=? AND receiver=?)
                  OR (sender=? AND receiver=?)
                  ORDER BY id ASC""",
@@ -219,3 +230,26 @@ def get_dm_senders(nick):
             WHERE sender=? AND receiver!=?
         """, (nick, nick, nick, nick))
         return [r[0] for r in c.fetchall()]
+
+def mark_dm_as_read(user, sender):
+    """Mark all messages from sender to user as read"""
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("""UPDATE messages 
+                 SET read = 1, read_at = ? 
+                 WHERE receiver = ? AND sender = ? AND read = 0""",
+              (now(), user, sender))
+    conn.commit()
+    conn.close()
+
+def get_unread_count(user):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("""SELECT sender, COUNT(*) as unread 
+                 FROM messages 
+                 WHERE receiver = ? AND read = 0 
+                 GROUP BY sender""",
+              (user,))
+    result = {row[0]: row[1] for row in c.fetchall()}
+    conn.close()
+    return result

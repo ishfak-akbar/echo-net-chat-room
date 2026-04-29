@@ -72,6 +72,10 @@ def listen_to_server(sid, tcp_client):
                     if len(parts) == 3:
                         sender, msg, time = parts
                         socketio.emit('dm', {'sender': sender, 'msg': msg, 'time': time}, to=sid)
+                
+                elif line.startswith('READ_RECEIPT|'):
+                    sender = line.split('|')[1]
+                    socketio.emit('read_receipt', {'sender': sender}, to=sid)
 
                 elif line.startswith('DM_SENT|'):
                     parts = line[8:].split('|', 2)
@@ -325,6 +329,22 @@ def handle_dm(data):
     msg    = data.get('msg', '').strip()
     if target and msg and tcp:
         tcp.send(f'DM {target} {msg}\n'.encode('ascii'))
+        
+@socketio.on('mark_read')
+def handle_mark_read(data):
+    sid = request.sid
+    tcp = get_tcp(sid)
+    target = data.get('target', '')
+    if target and tcp:
+        tcp.send(f'MARK_READ {target}\n'.encode('ascii'))
+
+@socketio.on('get_unread')
+def handle_get_unread():
+    sid = request.sid
+    nick = nick_map.get(sid)
+    if nick:
+        unread = db.get_unread_count(nick)
+        emit('unread_counts', {'counts': unread}, to=sid)
 
 
 @socketio.on('send_global')

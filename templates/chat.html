@@ -838,17 +838,21 @@
     <script>
       const socket = io();
       const ME = "{{ nickname }}";
-      let mode = null; // 'dm', 'global', 'group'
+
+      let mode = null;
       let dmTarget = null;
       let groupTarget = null;
-      const conversations = {};
-      const groupConversations = {};
+
+      const conversations = {}; 
+      const groupConversations = {}; 
       const globalConversation = [];
+
       let myGroups = {};
       let onlineUsersList = [];
       let allUsersList = [];
+      let unreadCounts = {};
 
-      socket.on("connected", () => {});
+      socket.on("connected", () => console.log("Connected to EchoNet"));
 
       socket.on("banned", () =>
         document.getElementById("banned-overlay").classList.add("show"),
@@ -857,11 +861,10 @@
         document.getElementById("kicked-overlay").classList.add("show"),
       );
       socket.on("server_error", () => {
-        alert("Connection lost due to a server error. Please reconnect.");
+        alert("Connection lost. Please reconnect.");
         window.location.href = "/";
       });
 
-      // FIX 1: Handle online_users event properly
       socket.on("online_users", ({ users }) => {
         onlineUsersList = users.filter((u) => u && u !== ME);
         if (document.getElementById("user-list").style.display !== "none") {
@@ -869,7 +872,6 @@
         }
       });
 
-      // FIX 2: Handle all_users event properly
       socket.on("all_users", ({ users }) => {
         allUsersList = users.filter((u) => u && u !== ME);
         if (document.getElementById("all-user-list").style.display === "flex") {
@@ -877,104 +879,57 @@
         }
       });
 
-      // FIX 3: Also handle userlist for group creation
       socket.on("userlist", ({ users }) => {
-        const others = users.filter((u) => u && u !== ME);
         if (
           document.getElementById("group-overlay").classList.contains("show")
         ) {
-          renderMemberChecklist(others);
+          renderMemberChecklist(users.filter((u) => u && u !== ME));
         }
       });
 
-      function renderUserList(listId, users) {
-        const list = document.getElementById(listId);
-        if (!list) return;
-        list.innerHTML = "";
+      socket.on("unread_counts", ({ counts }) => {
+        unreadCounts = counts || {};
+        renderUserList("user-list", onlineUsersList);
+        renderUserList("all-user-list", allUsersList);
+      });
 
-        if (users.length === 0) {
-          const li = document.createElement("li");
-          li.className = "empty";
-          li.textContent = "No users available";
-          li.style.justifyContent = "center";
-          li.style.cursor = "default";
-          list.appendChild(li);
-          return;
-        }
-
-        users.forEach((u) => {
-          const li = document.createElement("li");
-          li.id = `${listId}-${u}`;
-          li.innerHTML = `
-            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-              <div class="avatar"></div>
-              <div style="display:flex;flex-direction:column;min-width:0;">
-                <span>${u}</span>
-                <span style="font-size:12px;color:var(--muted);">
-                  ${conversations[u]?.slice(-1)[0]?.msg || "No messages yet"}
-                </span>
-              </div>
-            </div>
-            <span style="font-size:12px;color:var(--muted);">
-              ${conversations[u]?.slice(-1)[0]?.time || "--:--"}
-            </span>
-          `;
-          li.onclick = () => openDM(u);
-          list.appendChild(li);
+      socket.on("read_receipt", ({ sender }) => {
+        if (!conversations[sender]) return;
+        conversations[sender].forEach((m) => {
+          if (m.mine) m.read = true;
         });
-      }
 
-      socket.on("grouplist", ({ groups }) => {
-        myGroups = groups;
-        renderGroupList();
-      });
-
-      socket.on("group_added", ({ group, creator }) => {
-        if (!groupConversations[group]) groupConversations[group] = [];
-        renderGroupList();
+        if (mode === "dm" && dmTarget === sender) {
+          refreshCurrentChat();
+        }
       });
 
       socket.on("dm", ({ sender, msg, time }) => {
         if (sender === ME) return;
         if (!conversations[sender]) conversations[sender] = [];
-        conversations[sender].push({ sender, msg, time, mine: false });
+
+        conversations[sender].push({
+          sender,
+          msg,
+          time,
+          mine: false,
+          read: false,
+        });
+        updateChatPreview(sender, msg, time);
+
         if (mode === "dm" && dmTarget === sender) {
           renderMsg({ sender, msg, time, mine: false, showSender: false });
-        } else {
-          const li =
-            document.getElementById(`user-list-${sender}`) ||
-            document.getElementById(`all-user-list-${sender}`);
-          if (li) li.style.borderLeft = "3px solid var(--accent2)";
         }
-        updateChatPreview(sender, msg, time);
       });
 
       socket.on("dm_sent", ({ target, msg, time }) => {
         updateChatPreview(target, msg, time);
       });
 
-      socket.on("broadcast_notice", ({ msg, time }) => {
-        const box = document.getElementById("messages");
-        if (box && box.style.display !== "none") {
-          const div = document.createElement("div");
-          div.style.cssText =
-            "align-self:center;font-size:11px;color:#4fc8ff;padding:4px 14px;border:1px solid rgba(79,200,255,0.25);border-radius:20px;background:rgba(79,200,255,0.06);margin:4px 0;";
-          div.textContent = msg;
-          box.appendChild(div);
-          box.scrollTop = box.scrollHeight;
-        } else {
-          const banner = document.createElement("div");
-          banner.style.cssText =
-            "position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#0d2b3a;border:1px solid #4fc8ff;color:#4fc8ff;padding:10px 22px;border-radius:12px;font-size:12px;z-index:999;";
-          banner.textContent = msg;
-          document.body.appendChild(banner);
-          setTimeout(() => banner.remove(), 5000);
-        }
-      });
-
       socket.on("global_msg", ({ sender, msg, time }) => {
-        const mine = sender?.toLowerCase() === ME?.toLowerCase();
+        const mine = sender.toLowerCase() === ME.toLowerCase();
         globalConversation.push({ sender, msg, time, mine });
+
         if (mode === "global") {
           renderMsg({
             sender,
@@ -985,19 +940,8 @@
             isGlobal: true,
           });
         } else {
-          if (sender === "admin" || sender.startsWith("admin")) {
-            const box = document.getElementById("messages");
-            if (box && box.style.display !== "none") {
-              const div = document.createElement("div");
-              div.style.cssText =
-                "align-self:center;font-size:11px;color:#4fc8ff;padding:4px 14px;border:1px solid rgba(79,200,255,0.25);border-radius:20px;background:rgba(79,200,255,0.06);margin:4px 0;animation:pop 0.18s cubic-bezier(0.16,1,0.3,1) both;";
-              div.textContent = `📢 ${msg}`;
-              box.appendChild(div);
-              box.scrollTop = box.scrollHeight;
-            }
-          }
           const btn = document.getElementById("global-btn");
-          if (btn) btn.style.boxShadow = "0 0 0 2px var(--accent)";
+          if (btn) btn.style.boxShadow = "0 0 0 3px var(--accent)";
         }
       });
 
@@ -1005,6 +949,7 @@
         if (!groupConversations[group]) groupConversations[group] = [];
         const mine = sender === ME;
         groupConversations[group].push({ sender, msg, time, mine });
+
         if (mode === "group" && groupTarget === group) {
           renderMsg({
             sender,
@@ -1021,255 +966,172 @@
       });
 
       socket.on("offline_dm_history", ({ sender, msgs }) => {
-        if (!conversations[sender]) conversations[sender] = [];
-        conversations[sender] = [];
-        msgs.forEach(([s, receiver, msg, time]) => {
-          const mine = s === ME;
-          conversations[sender].push({ sender: s, msg, time, mine });
-        });
-        if (mode === "dm" && dmTarget === sender) {
-          const box = document.getElementById("messages");
-          box.innerHTML = "";
-          conversations[sender].forEach((m) =>
-            renderMsg({ ...m, showSender: false }),
-          );
-          box.scrollTop = box.scrollHeight;
-        }
-      });
+        conversations[sender] = msgs.map(([s, receiver, msg, time]) => ({
+          sender: s,
+          msg,
+          time,
+          mine: s === ME,
+          read: s === ME,
+        }));
 
-      socket.on("load_global", ({ msgs }) => {
-        msgs.forEach(([sender, msg, time]) => {
-          const mine = sender === ME;
-          globalConversation.push({ sender, msg, time, mine });
-        });
+        if (mode === "dm" && dmTarget === sender) refreshCurrentChat();
       });
 
       socket.on("chat_history", ({ msgs }) => {
         if (!dmTarget) return;
-        if (!conversations[dmTarget]) conversations[dmTarget] = [];
-        else conversations[dmTarget] = [];
-        const box = document.getElementById("messages");
-        box.innerHTML = "";
-        msgs.forEach(([sender, receiver, msg, time]) => {
-          const mine = sender === ME;
-          const displaySender = mine ? ME : sender;
-          conversations[dmTarget].push({
-            sender: displaySender,
-            msg,
-            time,
-            mine,
-            showSender: false,
-          });
-          renderMsg({
-            sender: displaySender,
-            msg,
-            time,
-            mine,
-            showSender: false,
-          });
-        });
-        box.scrollTop = box.scrollHeight;
+        conversations[dmTarget] = msgs.map(([sender, receiver, msg, time]) => ({
+          sender,
+          msg,
+          time,
+          mine: sender === ME,
+          read: sender === ME,
+        }));
+
+        if (mode === "dm" && dmTarget) refreshCurrentChat();
       });
 
       socket.on("group_history", ({ msgs }) => {
         if (!groupTarget) return;
-        if (!groupConversations[groupTarget])
-          groupConversations[groupTarget] = [];
-        else groupConversations[groupTarget] = [];
-        const box = document.getElementById("messages");
-        box.innerHTML = "";
-        msgs.forEach(([sender, msg, time]) => {
-          const mine = sender === ME;
-          groupConversations[groupTarget].push({ sender, msg, time, mine });
-          renderMsg({
-            sender,
-            msg,
-            time,
-            mine,
-            showSender: !mine,
-            isGroup: true,
-          });
-        });
-        box.scrollTop = box.scrollHeight;
+        groupConversations[groupTarget] = msgs.map(([sender, msg, time]) => ({
+          sender,
+          msg,
+          time,
+          mine: sender === ME,
+        }));
+
+        if (mode === "group" && groupTarget) refreshCurrentChat();
       });
 
+      socket.on("load_global", ({ msgs }) => {
+        globalConversation.length = 0;
+        msgs.forEach(([sender, msg, time]) => {
+          globalConversation.push({ sender, msg, time, mine: sender === ME });
+        });
+        if (mode === "global") refreshCurrentChat();
+      });
+
+      socket.on("grouplist", ({ groups }) => {
+        myGroups = groups;
+        renderGroupList();
+      });
+
+      socket.on("group_added", () => renderGroupList());
       socket.on("dmerr", ({ msg }) => showErr(msg));
       socket.on("grperr", ({ msg }) => showErr(msg));
 
-      function showErr(msg) {
-        const box = document.getElementById("messages");
-        const div = document.createElement("div");
-        div.className = "msg msg-err";
-        div.textContent = msg;
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
-      }
+      function renderUserList(listId, users) {
+        const list = document.getElementById(listId);
+        if (!list) return;
+        list.innerHTML = "";
 
-      function updateChatPreview(user, msg, time) {
-        const li =
-          document.getElementById(`user-list-${user}`) ||
-          document.getElementById(`all-user-list-${user}`);
-        if (!li) return;
-        const spans = li.querySelectorAll("span");
-        if (spans.length >= 2) {
-          spans[1].textContent = msg;
+        if (users.length === 0) {
+          const li = document.createElement("li");
+          li.textContent = "No users available";
+          li.style.justifyContent = "center";
+          list.appendChild(li);
+          return;
         }
-        const timeSpan = li.querySelector("span:last-child");
-        if (timeSpan) timeSpan.textContent = time;
+
+        users.forEach((u) => {
+          const unread = unreadCounts[u] || 0;
+          const lastMsg = conversations[u]?.slice(-1)[0];
+
+          const li = document.createElement("li");
+          li.id = `${listId}-${u}`;
+
+          li.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+          <div class="avatar"></div>
+          <div style="display:flex;flex-direction:column;min-width:0;">
+            <span>${u}</span>
+            <span style="font-size:12px;color:var(--muted);">
+              ${lastMsg?.msg || "No messages yet"}
+            </span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <span style="font-size:12px;color:var(--muted);">
+            ${lastMsg?.time || "--:--"}
+          </span>
+          ${unread > 0 ? `<span style="background:var(--accent);color:#000;font-size:11px;padding:2px 6px;border-radius:10px;font-weight:700;">${unread}</span>` : ""}
+        </div>
+      `;
+
+          li.onclick = () => openDM(u);
+          list.appendChild(li);
+        });
       }
 
       function renderGroupList() {
         const gl = document.getElementById("group-list");
         gl.innerHTML = "";
+
         Object.keys(myGroups).forEach((gname) => {
-          const members = myGroups[gname];
-          if (!members.includes(ME)) return;
+          if (!myGroups[gname].includes(ME)) return;
+
+          const last = groupConversations[gname]?.slice(-1)[0];
           const li = document.createElement("li");
           li.id = `group-${gname}`;
           if (mode === "group" && groupTarget === gname)
             li.classList.add("active");
+
           li.innerHTML = `
-            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-              <div class="avatar"></div>
-              <div style="display:flex;flex-direction:column;min-width:0;">
-                <span>${gname}</span>
-                <span style="font-size:12px;color:var(--muted);">
-                  ${groupConversations[gname]?.slice(-1)[0]?.msg || "No messages yet"}
-                </span>
-              </div>
-            </div>
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+          <div class="avatar"></div>
+          <div style="display:flex;flex-direction:column;min-width:0;">
+            <span>${gname}</span>
             <span style="font-size:12px;color:var(--muted);">
-              ${groupConversations[gname]?.slice(-1)[0]?.time || "--:--"}
+              ${last?.msg || "No messages yet"}
             </span>
-          `;
+          </div>
+        </div>
+        <span style="font-size:12px;color:var(--muted);">
+          ${last?.time || "--:--"}
+        </span>
+      `;
+
           li.onclick = () => openGroup(gname);
           gl.appendChild(li);
         });
       }
 
-      function setActiveNone() {
-        document
-          .querySelectorAll("#user-list li")
-          .forEach((li) => li.classList.remove("active"));
-        document
-          .querySelectorAll("#all-user-list li")
-          .forEach((li) => li.classList.remove("active"));
-        document
-          .querySelectorAll("#group-list li")
-          .forEach((li) => li.classList.remove("active"));
-        document.getElementById("global-btn").classList.remove("active");
-        document.getElementById("global-btn").style.boxShadow = "";
+      function renderMemberChecklist(users) {
+        const box = document.getElementById("member-list");
+        box.innerHTML = "";
+        users.forEach((u) => {
+          const row = document.createElement("label");
+          row.className = "member-item";
+          row.innerHTML = `
+        <input type="checkbox" value="${u}">
+        <span>${u}</span>
+      `;
+          box.appendChild(row);
+        });
       }
 
-      function openDM(user) {
-        mode = "dm";
-        dmTarget = user;
-        setActiveNone();
-        const li =
-          document.getElementById(`user-list-${user}`) ||
-          document.getElementById(`all-user-list-${user}`);
-        if (li) {
-          li.classList.add("active");
-          li.style.borderLeft = "";
+      function refreshCurrentChat() {
+        const box = document.getElementById("messages");
+        box.innerHTML = "";
+
+        if (mode === "dm" && dmTarget && conversations[dmTarget]) {
+          conversations[dmTarget].forEach((m) =>
+            renderMsg({ ...m, showSender: false }),
+          );
+        } else if (mode === "global") {
+          globalConversation.forEach((m) =>
+            renderMsg({ ...m, showSender: true, isGlobal: true }),
+          );
+        } else if (
+          mode === "group" &&
+          groupTarget &&
+          groupConversations[groupTarget]
+        ) {
+          groupConversations[groupTarget].forEach((m) =>
+            renderMsg({ ...m, showSender: !m.mine, isGroup: true }),
+          );
         }
-        document.getElementById("chat-title").innerHTML = `
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div class="avatar"></div>
-            <span style="color:#00a884;">${user}</span>
-          </div>
-        `;
-        document.getElementById("empty-state").style.display = "none";
-        const box = document.getElementById("messages");
-        box.style.display = "flex";
-        box.innerHTML = "";
-
-        socket.emit("load_chat", { target: user });
-
-        const input = document.getElementById("msg-input");
-        input.placeholder = `Message ${user}...`;
-        input.disabled = false;
-        document.querySelector(".send-btn").disabled = false;
-        input.focus();
-      }
-
-      function openGlobal() {
-        mode = "global";
-        dmTarget = null;
-        groupTarget = null;
-        setActiveNone();
-        document.getElementById("global-btn").classList.add("active");
-        document.getElementById("chat-title").innerHTML =
-          `🌐 <span>Global Chat</span>`;
-        document.getElementById("empty-state").style.display = "none";
-        const box = document.getElementById("messages");
-        box.style.display = "flex";
-        box.innerHTML = "";
-        globalConversation.forEach((m) =>
-          renderMsg({ ...m, showSender: true, isGlobal: true }),
-        );
-        const input = document.getElementById("msg-input");
-        input.placeholder = "Message everyone...";
-        input.disabled = false;
-        document.querySelector(".send-btn").disabled = false;
-        input.focus();
         box.scrollTop = box.scrollHeight;
       }
-
-      function openGroup(gname) {
-        mode = "group";
-        groupTarget = gname;
-        dmTarget = null;
-        setActiveNone();
-        const li = document.getElementById(`group-${gname}`);
-        if (li) {
-          li.classList.add("active");
-          li.style.borderLeft = "";
-        }
-        document.getElementById("chat-title").innerHTML = `
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div class="avatar"></div>
-            <span style="color:#00a884;">${gname}</span>
-          </div>
-        `;
-        document.getElementById("empty-state").style.display = "none";
-        const box = document.getElementById("messages");
-        box.style.display = "flex";
-        box.innerHTML = "";
-
-        socket.emit("load_group_history", { group: gname });
-
-        const input = document.getElementById("msg-input");
-        input.placeholder = `Message #${gname}...`;
-        input.disabled = false;
-        document.querySelector(".send-btn").disabled = false;
-        input.focus();
-      }
-
-      function sendMsg() {
-        const input = document.getElementById("msg-input");
-        const msg = input.value.trim();
-        if (!msg) return;
-
-        if (mode === "dm" && dmTarget) {
-          const time = new Date().toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          if (!conversations[dmTarget]) conversations[dmTarget] = [];
-          conversations[dmTarget].push({ sender: ME, msg, time, mine: true });
-          renderMsg({ sender: ME, msg, time, mine: true, showSender: false });
-          socket.emit("send_dm", { target: dmTarget, msg });
-        } else if (mode === "global") {
-          socket.emit("send_global", { msg });
-        } else if (mode === "group" && groupTarget) {
-          socket.emit("send_gmsg", { group: groupTarget, msg });
-        }
-        input.value = "";
-      }
-
-      document.getElementById("msg-input").addEventListener("keydown", (e) => {
-        if (e.key === "Enter") sendMsg();
-      });
 
       function renderMsg({
         sender,
@@ -1279,14 +1141,14 @@
         showSender = false,
         isGlobal = false,
         isGroup = false,
+        read = false,
       }) {
         const box = document.getElementById("messages");
         const wrap = document.createElement("div");
         wrap.style.cssText = `display:flex;flex-direction:column;align-items:${mine ? "flex-end" : "flex-start"};margin:2px 0;`;
 
         let cls = mine ? "msg-sent" : "msg-recv";
-        if (isGlobal && mine) cls = "msg-global-mine";
-        if (isGlobal && !mine) cls = "msg-global";
+        if (isGlobal) cls = mine ? "msg-global-mine" : "msg-global";
 
         if ((isGroup || isGlobal) && showSender && !mine) {
           const s = document.createElement("div");
@@ -1300,15 +1162,184 @@
         div.textContent = msg;
 
         const footer = document.createElement("div");
-        footer.style.cssText = `display:flex;justify-content:flex-end;width:100%;`;
+        footer.style.cssText =
+          "display:flex; justify-content:flex-end; align-items:center; gap:6px; width:100%; font-size:12px; color:var(--muted);";
+
         const timeDiv = document.createElement("div");
-        timeDiv.style.cssText = `font-size:12px;color:var(--muted);margin-top:4px;`;
-        timeDiv.textContent = time ? time.replace(/\[|\]/g, "") : "";
+        timeDiv.textContent = time || "";
         footer.appendChild(timeDiv);
+
+        if (mine && !isGlobal && !isGroup) {
+          const tick = document.createElement("span");
+          tick.style.fontSize = "13px";
+          tick.textContent = read ? "✓✓" : "✓";
+          tick.style.color = read ? "#4fc8ff" : "var(--muted)";
+          footer.appendChild(tick);
+        }
+
         wrap.appendChild(div);
         wrap.appendChild(footer);
         box.appendChild(wrap);
         box.scrollTop = box.scrollHeight;
+      }
+
+      function updateChatPreview(user, msg, time) {
+        const li =
+          document.getElementById(`user-list-${user}`) ||
+          document.getElementById(`all-user-list-${user}`);
+        if (!li) return;
+
+        const spans = li.querySelectorAll("span");
+        if (spans.length >= 2) {
+          spans[1].textContent =
+            msg.length > 35 ? msg.substring(0, 35) + "..." : msg;
+        }
+
+        const timeSpan = li.querySelector("span:last-child");
+        if (timeSpan) timeSpan.textContent = time;
+      }
+
+      function showErr(msg) {
+        const box = document.getElementById("messages");
+        const div = document.createElement("div");
+        div.className = "msg msg-err";
+        div.textContent = msg;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+      }
+
+      function setActiveNone() {
+        document
+          .querySelectorAll("#user-list li, #all-user-list li, #group-list li")
+          .forEach((li) => {
+            li.classList.remove("active");
+            li.style.borderLeft = "";
+          });
+        document.getElementById("global-btn").classList.remove("active");
+        document.getElementById("global-btn").style.boxShadow = "";
+      }
+
+      function openDM(user) {
+        mode = "dm";
+        dmTarget = user;
+        groupTarget = null;
+
+        socket.emit("mark_read", { target: user });
+        unreadCounts[user] = 0;
+
+        setActiveNone();
+        const li =
+          document.getElementById(`user-list-${user}`) ||
+          document.getElementById(`all-user-list-${user}`);
+        if (li) li.classList.add("active");
+
+        document.getElementById("chat-title").innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="avatar"></div>
+            <span style="color:#00a884;">${user}</span>
+          </div>
+        `;
+
+        document.getElementById("empty-state").style.display = "none";
+        document.getElementById("messages").style.display = "flex";
+
+        const input = document.getElementById("msg-input");
+        input.placeholder = `Message ${user}...`;
+        input.disabled = false;
+        document.querySelector(".send-btn").disabled = false;
+
+        socket.emit("load_chat", { target: user });
+        refreshCurrentChat();
+        input.focus();
+      }
+
+      function openGlobal() {
+        mode = "global";
+        dmTarget = null;
+        groupTarget = null;
+
+        setActiveNone();
+        document.getElementById("global-btn").classList.add("active");
+
+        document.getElementById("chat-title").innerHTML =
+          `🌐 <span>Global Chat</span>`;
+        document.getElementById("empty-state").style.display = "none";
+        document.getElementById("messages").style.display = "flex";
+
+        const input = document.getElementById("msg-input");
+        input.placeholder = "Message everyone...";
+        input.disabled = false;
+        document.querySelector(".send-btn").disabled = false;
+
+        refreshCurrentChat();
+        input.focus();
+      }
+
+      function openGroup(gname) {
+        mode = "group";
+        groupTarget = gname;
+        dmTarget = null;
+
+        setActiveNone();
+        const li = document.getElementById(`group-${gname}`);
+        if (li) li.classList.add("active");
+
+        document.getElementById("chat-title").innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="avatar"></div>
+            <span style="color:#00a884;">${gname}</span>
+          </div>
+        `;
+
+        document.getElementById("empty-state").style.display = "none";
+        document.getElementById("messages").style.display = "flex";
+
+        const input = document.getElementById("msg-input");
+        input.placeholder = `Message #${gname}...`;
+        input.disabled = false;
+        document.querySelector(".send-btn").disabled = false;
+
+        socket.emit("load_group_history", { group: gname });
+        refreshCurrentChat();
+        input.focus();
+      }
+
+      function sendMsg() {
+        const input = document.getElementById("msg-input");
+        const msg = input.value.trim();
+        if (!msg) return;
+
+        const time = new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        if (mode === "dm" && dmTarget) {
+          if (!conversations[dmTarget]) conversations[dmTarget] = [];
+          conversations[dmTarget].push({
+            sender: ME,
+            msg,
+            time,
+            mine: true,
+            read: false,
+          });
+
+          renderMsg({
+            sender: ME,
+            msg,
+            time,
+            mine: true,
+            showSender: false,
+            read: false,
+          });
+          socket.emit("send_dm", { target: dmTarget, msg });
+        } else if (mode === "global") {
+          socket.emit("send_global", { msg });
+        } else if (mode === "group" && groupTarget) {
+          socket.emit("send_gmsg", { group: groupTarget, msg });
+        }
+
+        input.value = "";
       }
 
       function showOnline() {
@@ -1352,42 +1383,27 @@
 
       function submitCreateGroup() {
         const name = document.getElementById("g-name").value.trim();
-        const checkboxes = document.querySelectorAll(
-          "#member-list input[type='checkbox']",
-        );
-        const members = Array.from(checkboxes)
-          .filter((cb) => cb.checked)
-          .map((cb) => cb.value);
-        if (!name) {
-          alert("Group name required.");
-          return;
-        }
-        socket.emit("create_group", { name, members });
+        const checked = Array.from(
+          document.querySelectorAll(
+            "#member-list input[type='checkbox']:checked",
+          ),
+        ).map((cb) => cb.value);
+
+        if (!name) return alert("Group name is required");
+        socket.emit("create_group", { name, members: checked });
         closeGroupModal();
       }
 
-      function renderMemberChecklist(users) {
-        const box = document.getElementById("member-list");
-        box.innerHTML = "";
-        users.forEach((u) => {
-          if (u === ME) return;
-          const row = document.createElement("label");
-          row.className = "member-item";
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.value = u;
-          const nameSpan = document.createElement("span");
-          nameSpan.textContent = u;
-          row.appendChild(checkbox);
-          row.appendChild(nameSpan);
-          box.appendChild(row);
-        });
-      }
+      document.getElementById("msg-input").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") sendMsg();
+      });
 
-      // FIX 4: Initialize on page load - request both lists
       socket.emit("get_users");
+      socket.emit("get_unread");
+
       setInterval(() => {
         socket.emit("get_users");
+        socket.emit("get_unread");
       }, 5000);
 
       showOnline();
