@@ -100,7 +100,7 @@
         text-align: center;
         border-radius: 12px;
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 13px;
         cursor: pointer;
       }
 
@@ -487,8 +487,48 @@
         <div class="tab active" id="tab-online" onclick="showOnline()">
           Online
         </div>
-        <div class="tab" id="tab-all" onclick="showAll()">All</div>
-        <div class="tab" id="tab-groups" onclick="showGroups()">Groups</div>
+        <div class="tab" id="tab-all" onclick="showAll()">
+          All
+          <span
+            id="dot-all"
+            style="
+              display: none;
+              width: 7px;
+              height: 7px;
+              background: var(--accent-end);
+              border-radius: 50%;
+              display: none;
+              box-shadow:
+                0 0 6px var(--accent-end),
+                0 0 12px var(--accent-end);
+              margin-left: 4px;
+              vertical-align: middle;
+            "
+          ></span>
+        </div>
+        <div
+          class="tab"
+          id="tab-groups"
+          onclick="showGroups()"
+          style="white-space: nowrap"
+        >
+          Groups
+          <span
+            id="dot-groups"
+            style="
+              width: 7px;
+              height: 7px;
+              background: var(--accent-end);
+              border-radius: 50%;
+              box-shadow:
+                0 0 6px var(--accent-end),
+                0 0 12px var(--accent-end);
+              margin-left: 4px;
+              vertical-align: middle;
+              display: none;
+            "
+          ></span>
+        </div>
       </div>
       <div style="padding: 8px 12px; position: relative">
         <input
@@ -892,6 +932,9 @@
           read: false,
         });
         updateChatPreview(sender, msg, time);
+        if (!(mode === "dm" && dmTarget === sender)) {
+          document.getElementById("dot-all").style.display = "inline-block";
+        }
 
         if (mode === "dm" && dmTarget === sender) {
           socket.emit("mark_read", { target: sender });
@@ -921,8 +964,17 @@
         if (!groupConversations[group]) groupConversations[group] = [];
         const mine = sender === ME;
         groupConversations[group].push({ sender, msg, time, mine });
-        if (mode === "group" && groupTarget === group)
+
+        if (mode === "group" && groupTarget === group) {
           renderMsg({ sender, msg, time, mine, isGroup: true });
+          socket.emit("mark_group_read", { group });
+          groupUnreadCounts[group] = 0;
+          const badge = document.querySelector(`#group-${group} .unread-badge`);
+          if (badge) badge.remove();
+        }
+        if (!(mode === "group" && groupTarget === group)) {
+          document.getElementById("dot-groups").style.display = "inline-block";
+        }
       });
 
       socket.on("chat_history", ({ msgs }) => {
@@ -1218,6 +1270,12 @@
 
         socket.emit("load_chat", { target: user });
         refreshCurrentChat();
+        const totalUnread = Object.values(unreadCounts).reduce(
+          (a, b) => a + b,
+          0,
+        );
+        if (totalUnread === 0)
+          document.getElementById("dot-all").style.display = "none";
       }
 
       function openGlobal() {
@@ -1298,6 +1356,12 @@
         const gbadge = document.querySelector(`#group-${gname} .unread-badge`);
         if (gbadge) gbadge.remove();
         refreshCurrentChat();
+        const totalGroupUnread = Object.values(groupUnreadCounts).reduce(
+          (a, b) => a + b,
+          0,
+        );
+        if (totalGroupUnread === 0)
+          document.getElementById("dot-groups").style.display = "none";
       }
 
       function sendMsg() {
@@ -1345,6 +1409,7 @@
         document.getElementById("user-list").style.display = "none";
         document.getElementById("all-user-list").style.display = "block";
         document.getElementById("groups-section").style.display = "none";
+        document.getElementById("dot-all").style.display = "none";
         document
           .querySelectorAll(".tab")
           .forEach((t) => t.classList.remove("active"));
@@ -1355,6 +1420,7 @@
         document.getElementById("user-list").style.display = "none";
         document.getElementById("all-user-list").style.display = "none";
         document.getElementById("groups-section").style.display = "block";
+        document.getElementById("dot-groups").style.display = "none";
         document
           .querySelectorAll(".tab")
           .forEach((t) => t.classList.remove("active"));
