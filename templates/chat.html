@@ -8,6 +8,7 @@
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <style>
       :root {
@@ -431,6 +432,16 @@
         background: var(--border);
         border-radius: 9999px;
       }
+      #member-list::-webkit-scrollbar {
+        width: 3px;
+      }
+      #member-list::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      #member-list::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 9999px;
+      }
     </style>
   </head>
   <body>
@@ -549,7 +560,7 @@
       </div>
 
       <div class="global-link" id="global-btn" onclick="openGlobal()">
-        🌐 Global Chat
+        <i class="fa-solid fa-earth-americas"></i> Global Chat
       </div>
 
       <div style="padding: 18px 20px; border-top: 1px solid var(--border)">
@@ -708,7 +719,7 @@
 
     <!-- Group Modal -->
     <div class="overlay" id="group-overlay">
-      <div class="card" style="width: 380px; padding: 28px">
+      <div class="card" style="width: 350px; padding: 28px">
         <h3 style="margin-bottom: 18px">Create New Group</h3>
         <input
           id="g-name"
@@ -738,6 +749,7 @@
               border: none;
               border-radius: 12px;
               color: var(--text);
+              cursor: pointer;
             "
           >
             Cancel
@@ -755,6 +767,7 @@
               border: none;
               border-radius: 12px;
               color: white;
+              cursor: pointer;
             "
           >
             Create
@@ -1187,7 +1200,10 @@
 
       function openGroupModal() {
         document.getElementById("group-overlay").classList.add("show");
-        renderMemberChecklist(allUsersList);
+        document.getElementById("g-name").value = "";
+        if (allUsersList.length > 0) {
+          renderMemberChecklist(allUsersList);
+        }
       }
 
       function closeGroupModal() {
