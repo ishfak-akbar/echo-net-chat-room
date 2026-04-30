@@ -8,7 +8,10 @@
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <style>
       :root {
@@ -1050,8 +1053,10 @@
         document.getElementById("right-avatar").textContent =
           user[0].toUpperCase();
         document.getElementById("right-name").textContent = user;
-        document.getElementById("right-status").innerHTML =
-          `● <span style="color:var(--online)">Online</span>`;
+        const isOnline = onlineUsersList.includes(user);
+        document.getElementById("right-status").innerHTML = isOnline
+          ? `● <span style="color:var(--online)">Online</span>`
+          : `● <span style="color:var(--muted)">Offline</span>`;
 
         document.getElementById("chat-title").innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;">
