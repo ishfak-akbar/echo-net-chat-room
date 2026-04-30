@@ -253,3 +253,22 @@ def get_unread_count(user):
     result = {row[0]: row[1] for row in c.fetchall()}
     conn.close()
     return result
+
+def get_recent_messages(nickname):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute('''
+        SELECT 
+            CASE WHEN sender = ? THEN receiver ELSE sender END as other,
+            message, time
+        FROM messages
+        WHERE (sender = ? OR receiver = ?)
+        AND id IN (
+            SELECT MAX(id) FROM messages
+            WHERE sender = ? OR receiver = ?
+            GROUP BY CASE WHEN sender = ? THEN receiver ELSE sender END
+        )
+    ''', (nickname, nickname, nickname, nickname, nickname, nickname))
+    rows = c.fetchall()
+    conn.close()
+    return rows

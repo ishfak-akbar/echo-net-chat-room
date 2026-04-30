@@ -903,6 +903,18 @@
         }
       });
 
+      socket.on("offline_dm_history", ({ sender, msgs }) => {
+        conversations[sender] = msgs.map(([s, r, msg, time, read]) => ({
+          sender: s,
+          msg,
+          time,
+          mine: s === ME,
+          read: !!read,
+        }));
+        renderUserList("user-list", onlineUsersList);
+        renderUserList("all-user-list", allUsersList);
+      });
+
       function renderUserList(listId, users) {
         const container = document.getElementById(listId);
         container.innerHTML = "";
