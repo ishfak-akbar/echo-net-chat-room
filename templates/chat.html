@@ -395,6 +395,42 @@
         <div class="tab" id="tab-all" onclick="showAll()">All</div>
         <div class="tab" id="tab-groups" onclick="showGroups()">Groups</div>
       </div>
+      <div style="padding: 8px 12px; position: relative">
+        <input
+          id="search-input"
+          type="text"
+          placeholder="🔍 Search users..."
+          oninput="onSearch()"
+          style="
+            width: 100%;
+            padding: 9px 36px 9px 14px;
+            background: #1e2f3a;
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            color: var(--text);
+            font-size: 13.5px;
+            outline: none;
+            font-family: Poppins, sans-serif;
+          "
+        />
+        <span
+          id="search-clear"
+          onclick="clearSearch()"
+          style="
+            display: none;
+            position: absolute;
+            right: 22px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 16px;
+            line-height: 1;
+          "
+          >✕</span
+        >
+      </div>
+      <div class="list-container" id="search-list" style="display:none; flex:1;"></div>
 
       <div class="list-container" id="user-list"></div>
       <div
@@ -812,7 +848,7 @@
 
         const footer = document.createElement("div");
         footer.className = "msg-footer";
-        footer.innerHTML = time || "";
+        footer.innerHTML = (time || "").replace(/[\[\]()]/g, "");
 
         if (mine && !isGlobal && !isGroup) {
           footer.innerHTML += ` <span style="color:${read ? "#4fc8ff" : "var(--muted)"}">${read ? "✓✓" : "✓"}</span>`;
@@ -964,10 +1000,8 @@
           socket.emit("send_dm", { target: dmTarget, msg });
         } else if (mode === "global") {
           socket.emit("send_global", { msg });
-          renderMsg({ sender: ME, msg, time, mine: true, isGlobal: true });
         } else if (mode === "group" && groupTarget) {
           socket.emit("send_gmsg", { group: groupTarget, msg });
-          renderMsg({ sender: ME, msg, time, mine: true, isGroup: true });
         }
 
         input.value = "";
@@ -1022,6 +1056,67 @@
         if (checked.length === 0) return alert("Select at least one member");
         socket.emit("create_group", { name, members: checked });
         closeGroupModal();
+      }
+
+      function onSearch() {
+        const q = document
+          .getElementById("search-input")
+          .value.trim()
+          .toLowerCase();
+        document.getElementById("search-clear").style.display = q
+          ? "block"
+          : "none";
+
+        if (!q) {
+          document.getElementById("search-list").style.display = "none";
+          restoreActiveTab();
+          return;
+        }
+
+        document.getElementById("user-list").style.display = "none";
+        document.getElementById("all-user-list").style.display = "none";
+        document.getElementById("groups-section").style.display = "none";
+
+        const combined = [...new Set([...onlineUsersList, ...allUsersList])];
+        const results = combined.filter((u) => u.toLowerCase().startsWith(q));
+        const box = document.getElementById("search-list");
+        box.innerHTML = "";
+        box.style.display = "block";
+
+        if (results.length === 0) {
+          box.innerHTML = `<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px;">No users found</div>`;
+          return;
+        }
+
+        results.forEach((u) => {
+          const div = document.createElement("div");
+          div.className = "user-item";
+          div.innerHTML = `
+          <div class="avatar">${u[0].toUpperCase()}</div>
+          <div class="user-info">
+            <div class="user-name">${u}</div>
+            <div class="last-msg">${conversations[u]?.slice(-1)[0]?.msg || "No messages yet"}</div>
+          </div>`;
+          div.onclick = () => {
+            openDM(u);
+          };
+          box.appendChild(div);
+        });
+      }
+
+      function clearSearch() {
+        const input = document.getElementById("search-input");
+        input.value = "";
+        document.getElementById("search-clear").style.display = "none";
+        document.getElementById("search-list").style.display = "none";
+        restoreActiveTab();
+      }
+
+      function restoreActiveTab() {
+        const activeTab = document.querySelector(".tab.active")?.id;
+        if (activeTab === "tab-all") showAll();
+        else if (activeTab === "tab-groups") showGroups();
+        else showOnline();
       }
 
       document.getElementById("msg-input").addEventListener("keydown", (e) => {
