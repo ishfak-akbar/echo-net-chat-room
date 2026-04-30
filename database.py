@@ -61,6 +61,12 @@ def init_db():
         last_read_id INTEGER DEFAULT 0,
         PRIMARY KEY (nickname, group_name)
     )""")
+    
+    c.execute("""CREATE TABLE IF NOT EXISTS broadcasts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message TEXT,
+        time TEXT
+    )""")
 
     try:
         c.execute("ALTER TABLE messages ADD COLUMN read INTEGER DEFAULT 0")
@@ -307,3 +313,18 @@ def mark_group_read(nickname, group_name):
     ''', (nickname, group_name, last_id, last_id))
     conn.commit()
     conn.close()
+    
+def save_broadcast(msg, time):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("INSERT INTO broadcasts (message, time) VALUES (?, ?)", (msg, time))
+    conn.commit()
+    conn.close()
+
+def get_broadcasts():
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT message, time FROM broadcasts ORDER BY id ASC")
+    result = c.fetchall()
+    conn.close()
+    return result

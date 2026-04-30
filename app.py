@@ -5,6 +5,7 @@ from flask_socketio import SocketIO, emit
 import os
 from werkzeug.utils import secure_filename
 import database as db
+from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = 'tcpchatroom_secret_key'
@@ -307,7 +308,8 @@ def on_connect():
         t.start()
 
         emit('connected', {'nick': nick})
-        broadcast_user_lists()
+        broadcasts = db.get_broadcasts()
+        emit('load_broadcasts', {'msgs': broadcasts}, to=sid)
 
     except Exception as e:
         print(f"[on_connect ERROR] {e}")
@@ -419,6 +421,10 @@ def handle_kick(data):
     target = data.get('target', '')
     if target and tcp:
         tcp.send(f'KICK {target}\n'.encode('ascii'))
+        from datetime import datetime
+        time = datetime.now().strftime('%I:%M %p')
+        socketio.emit('broadcast_notice', {'msg': f'⚠️ {target} was kicked by Admin', 'time': time})
+        db.save_broadcast(f'⚠️ {target} was kicked by Admin', time)
 
 
 @socketio.on('ban_user')
@@ -428,17 +434,21 @@ def handle_ban(data):
     target = data.get('target', '')
     if target and tcp:
         tcp.send(f'BAN {target}\n'.encode('ascii'))
+        from datetime import datetime
+        time = datetime.now().strftime('%I:%M %p')
+        socketio.emit('broadcast_notice', {'msg': f'⛔ {target} was permanently banned by Admin', 'time': time})
+        db.save_broadcast(f'⛔ {target} was permanently banned by Admin', time)
 
 
 @socketio.on('broadcast_msg')
 def handle_broadcast(data):
     sid = request.sid
-    tcp = get_tcp(sid)
     msg = data.get('msg', '').strip()
-    if msg and tcp:
+    if msg:
         from datetime import datetime
-        time = datetime.now().strftime('[%I:%M %p]')
-        socketio.emit('broadcast_notice', {'msg': f'📢 ADMIN: {msg}', 'time': time})
+        time = datetime.now().strftime('%I:%M %p')
+        db.save_broadcast(msg, time)
+        socketio.emit('broadcast_notice', {'msg': msg, 'time': time})
 
 
 @socketio.on('create_group')
@@ -461,7 +471,6 @@ def handle_gmsg(data):
     if group_name and msg and tcp:
         tcp.send(f'GMSG {group_name} {msg}\n'.encode('ascii'))
 
-
 @socketio.on('unban_user')
 def handle_unban(data):
     sid    = request.sid
@@ -469,6 +478,10 @@ def handle_unban(data):
     target = data.get('target', '')
     if target and tcp:
         tcp.send(f'UNBAN {target}\n'.encode('ascii'))
+        from datetime import datetime
+        time = datetime.now().strftime('%I:%M %p')
+        socketio.emit('broadcast_notice', {'msg': f'✅ {target} was unbanned by Admin', 'time': time})
+        db.save_broadcast(f'✅ {target} was unbanned by Admin', time)
 
 
 @socketio.on('get_bans')

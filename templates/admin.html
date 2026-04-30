@@ -8,365 +8,425 @@
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <style>
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
+      :root {
+        --bg: #0a1218;
+        --card: #132129;
+        --border: #23404f;
+        --text: #e0f2f1;
+        --muted: #94c4c0;
+        --accent-start: #0f766e;
+        --accent-end: #14b8a6;
+        --online: #34d399;
+        --danger: #f87171;
+        --warn: #fbbf24;
+      }
+
+      * {
         margin: 0;
         padding: 0;
+        box-sizing: border-box;
       }
-      :root {
-        --bg: #010505;
-        --surface: #060f0f;
-        --surface2: #0a1a1a;
-        --border: rgba(0, 168, 132, 0.15);
-        --text: #e6e8ec;
-        --muted: #8b949e;
-        --accent: #00a884;
-        --accent2: #0ea5e9;
-        --online: #22c55e;
-        --offline: #6b7280;
-        --danger: #ff6b6b;
-        --warn: #ffb347;
-      }
+
       body {
-        background: linear-gradient(160deg, #0a2a2a 0%, #051515 100%);
-        color: var(--text);
         font-family: "Poppins", sans-serif;
+        background: var(--bg);
+        color: var(--text);
         min-height: 100vh;
         display: flex;
         flex-direction: column;
       }
-      body::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        background-image: radial-gradient(circle, #0a2a2a 1px, transparent 1px);
-        background-size: 28px 28px;
-        opacity: 0.5;
-        z-index: 0;
-        pointer-events: none;
-      }
+
       .header {
-        position: relative;
-        z-index: 1;
-        background: linear-gradient(
-          160deg,
-          #0a1a1a 0%,
-          #050d0d 50%,
-          #020808 100%
-        );
-        border-bottom: 1px solid rgba(0, 168, 132, 0.2);
-        padding: 16px 28px;
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+        padding: 14px 28px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
       }
+
       .header-left {
         display: flex;
         align-items: center;
         gap: 12px;
       }
-      .hicon {
-        width: 36px;
-        height: 36px;
-        border: 1px solid var(--accent);
-        border-radius: 9px;
+
+      .logo-box {
+        width: 38px;
+        height: 38px;
+        background: linear-gradient(
+          135deg,
+          var(--accent-start),
+          var(--accent-end)
+        );
+        border-radius: 11px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 21px;
+        font-size: 18px;
+        color: white;
+        box-shadow:
+          0 0 10px rgba(20, 184, 166, 0.6),
+          0 0 20px rgba(20, 184, 166, 0.3);
       }
+
       .header h1 {
-        font-size: 22px;
+        font-size: 20px;
         font-weight: 700;
       }
       .header h1 span {
-        color: var(--accent);
+        color: var(--accent-end);
       }
-      .nav-links {
+
+      .header-right {
         display: flex;
+        align-items: center;
         gap: 10px;
       }
-      .nav-links a {
-        font-size: 16px;
-        color: var(--muted);
+
+      .badge-admin {
+        background: rgba(20, 184, 166, 0.15);
+        border: 1px solid var(--accent-end);
+        color: var(--accent-end);
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 9999px;
+      }
+
+      .logout-btn {
+        background: rgba(248, 113, 113, 0.1);
+        border: 1px solid rgba(248, 113, 113, 0.3);
+        color: var(--danger);
+        padding: 6px 16px;
+        border-radius: 9999px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
         text-decoration: none;
-        padding: 6px 14px;
-        border: 1px solid rgba(0, 168, 132, 0.2);
-        border-radius: 7px;
-        transition:
-          color 0.15s,
-          border-color 0.15s;
+        transition: 0.2s;
       }
-      .nav-links a:hover {
-        color: var(--accent);
-        border-color: var(--accent);
+      .logout-btn:hover {
+        background: rgba(248, 113, 113, 0.2);
       }
+
       .wrap {
-        position: relative;
-        z-index: 1;
-        max-width: 960px;
-        margin: 22px auto;
-        padding: 0 24px;
+        max-width: 1000px;
+        margin: 24px auto;
+        padding: 0 20px;
         width: 100%;
         display: grid;
         grid-template-columns: 1fr 1fr;
-        grid-template-areas:
-          "users stats"
-          "bans log"
-          "broadcast broadcast";
-        gap: 20px;
+        gap: 18px;
       }
-      .card:nth-child(1) {
-        grid-area: users;
-      }
-      .card:nth-child(2) {
-        grid-area: stats;
-      }
-      .card:nth-child(3) {
-        grid-area: bans;
-      }
-      .card:nth-child(4) {
-        grid-area: log;
-      }
-      .card-broadcast {
-        grid-area: broadcast;
-      }
+
       .card {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-        border-radius: 14px;
-        padding: 24px;
+        background: var(--card);
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45);
+        padding: 22px;
       }
-      .card-broadcast {
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
-        border-radius: 14px;
-        padding: 24px;
+
+      .card-full {
+        grid-column: 1 / -1;
       }
+
       .card-title {
-        font-size: 14px;
+        font-size: 11px;
         font-weight: 700;
-        letter-spacing: 1.5px;
+        letter-spacing: 1.8px;
         text-transform: uppercase;
         color: var(--muted);
-        margin-bottom: 18px;
+        margin-bottom: 16px;
         display: flex;
         align-items: center;
-        gap: 7px;
+        gap: 8px;
       }
-      #admin-users {
+
+      .card-title i {
+        color: var(--accent-end);
+        font-size: 13px;
+      }
+
+      .user-list {
         list-style: none;
         display: flex;
         flex-direction: column;
-        gap: 7px;
-        max-height: 320px;
+        gap: 6px;
+        max-height: 300px;
         overflow-y: auto;
       }
-      #admin-users li {
+
+      .user-list::-webkit-scrollbar {
+        width: 3px;
+      }
+      .user-list::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .user-list::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 9999px;
+      }
+
+      .user-list li {
         display: flex;
         align-items: center;
-        gap: 9px;
-        padding: 9px 12px;
-        background: linear-gradient(135deg, #0a2a2a 0%, #0a1a2a 100%);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 8px;
-        font-size: 17px;
+        gap: 10px;
+        padding: 10px 14px;
+        background: rgba(20, 184, 166, 0.05);
+        border: 1px solid rgba(20, 184, 166, 0.1);
+        border-radius: 12px;
+        font-size: 14px;
       }
-      #ban-list {
-        list-style: none;
-        display: flex;
-        flex-direction: column;
-        gap: 7px;
-        max-height: 320px;
-        overflow-y: auto;
-      }
-      #ban-list li {
-        display: flex;
-        align-items: center;
-        gap: 9px;
-        padding: 9px 12px;
-        background: linear-gradient(135deg, #0a2a2a 0%, #0a1a2a 100%);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 8px;
-        font-size: 17px;
-      }
+
       .udot {
         width: 7px;
         height: 7px;
-        background: var(--accent);
+        background: var(--online);
         border-radius: 50%;
         flex-shrink: 0;
-        box-shadow: 0 0 5px var(--accent);
+        box-shadow: 0 0 6px var(--online);
       }
+
+      .bdot {
+        width: 7px;
+        height: 7px;
+        background: var(--danger);
+        border-radius: 50%;
+        flex-shrink: 0;
+        box-shadow: 0 0 6px var(--danger);
+      }
+
       .actions {
         margin-left: auto;
         display: flex;
         gap: 6px;
       }
+
       .bkick,
       .bban,
       .bunban {
         border: none;
-        border-radius: 5px;
-        padding: 4px 10px;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 14px;
-        font-weight: 700;
+        border-radius: 8px;
+        padding: 5px 11px;
+        font-family: "Poppins", sans-serif;
+        font-size: 12px;
+        font-weight: 600;
         cursor: pointer;
-        transition: opacity 0.15s;
+        transition: 0.2s;
       }
+
       .bkick {
-        background: rgba(255, 179, 71, 0.12);
+        background: rgba(251, 191, 36, 0.1);
         color: var(--warn);
-        border: 1px solid rgba(255, 179, 71, 0.25);
+        border: 1px solid rgba(251, 191, 36, 0.25);
       }
       .bban {
-        background: rgba(255, 107, 107, 0.12);
+        background: rgba(248, 113, 113, 0.1);
         color: var(--danger);
-        border: 1px solid rgba(255, 107, 107, 0.25);
+        border: 1px solid rgba(248, 113, 113, 0.25);
       }
       .bunban {
-        background: rgba(46, 204, 113, 0.12);
-        color: #2ecc71;
-        border: 1px solid rgba(46, 204, 113, 0.25);
+        background: rgba(52, 211, 153, 0.1);
+        color: var(--online);
+        border: 1px solid rgba(52, 211, 153, 0.25);
       }
-      .bkick:hover,
-      .bban:hover,
+      .bkick:hover {
+        background: rgba(251, 191, 36, 0.2);
+      }
+      .bban:hover {
+        background: rgba(248, 113, 113, 0.2);
+      }
       .bunban:hover {
-        opacity: 0.75;
+        background: rgba(52, 211, 153, 0.2);
       }
+
       .stats {
         display: flex;
         flex-direction: column;
         gap: 10px;
       }
+
       .stat {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 11px 13px;
-        background: rgba(0, 168, 132, 0.05);
-        border: 1px solid rgba(0, 168, 132, 0.15);
-        border-radius: 8px;
+        padding: 12px 16px;
+        background: rgba(20, 184, 166, 0.05);
+        border: 1px solid rgba(20, 184, 166, 0.12);
+        border-radius: 12px;
       }
+
       .stat-label {
-        font-size: 16px;
+        font-size: 13px;
         color: var(--muted);
       }
       .stat-val {
-        font-size: 28px;
+        font-size: 26px;
         font-weight: 700;
-        color: var(--accent);
+        color: var(--accent-end);
       }
+
       #log {
-        background: linear-gradient(
-          160deg,
-          #060f0f 0%,
-          #030808 50%,
-          #010505 100%
-        );
-        border: 1px solid rgba(0, 168, 132, 0.15);
-        border-radius: 8px;
+        background: #0a1218;
+        border: 1px solid var(--border);
+        border-radius: 12px;
         padding: 12px;
-        height: 220px;
+        height: 200px;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
         gap: 4px;
-        font-size: 15px;
+        font-size: 13px;
       }
+
       #log::-webkit-scrollbar {
         width: 3px;
       }
-      #log::-webkit-scrollbar-thumb {
-        background: rgba(0, 168, 132, 0.3);
+      #log::-webkit-scrollbar-track {
+        background: transparent;
       }
+      #log::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 9999px;
+      }
+
       .log-row {
         display: flex;
         gap: 10px;
       }
       .log-t {
-        color: var(--accent);
+        color: var(--accent-end);
         flex-shrink: 0;
+        font-size: 12px;
       }
       .log-m {
         color: var(--muted);
       }
+
+      /* Broadcast */
       .bc-form {
         display: flex;
-        flex-direction: column;
         gap: 10px;
       }
+
       textarea {
-        background: linear-gradient(160deg, #060f0f 0%, #030808 100%);
-        border: 1px solid rgba(0, 168, 132, 0.2);
-        border-radius: 8px;
-        padding: 11px 13px;
+        flex: 1;
+        background: #0a1218;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 16px;
         color: var(--text);
-        font-family: "JetBrains Mono", monospace;
-        font-size: 16px;
-        resize: vertical;
-        min-height: 80px;
+        font-family: "Poppins", sans-serif;
+        font-size: 14px;
+        resize: none;
+        height: 52px;
         outline: none;
         transition: border-color 0.2s;
       }
       textarea:focus {
-        border-color: var(--accent);
+        border-color: var(--accent-end);
       }
+
       .bc-btn {
-        background: linear-gradient(135deg, #009973 0%, #0d95d4 100%);
-        color: #fff;
+        background: linear-gradient(
+          135deg,
+          var(--accent-start),
+          var(--accent-end)
+        );
+        color: white;
         border: none;
-        border-radius: 8px;
-        padding: 10px;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 17px;
-        font-weight: 700;
+        border-radius: 12px;
+        padding: 0 24px;
+        font-family: "Poppins", sans-serif;
+        font-size: 14px;
+        font-weight: 600;
         cursor: pointer;
-        transition:
-          transform 0.15s,
-          box-shadow 0.15s;
+        transition: 0.2s;
+        white-space: nowrap;
       }
       .bc-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 18px rgba(0, 168, 132, 0.4);
+        opacity: 0.85;
       }
+
       .empty {
-        font-size: 16px;
+        font-size: 13px;
         color: var(--muted);
+        padding: 8px 0;
       }
     </style>
   </head>
   <body>
     <div class="header">
       <div class="header-left">
-        <div class="hicon">🛡️</div>
-        <h1>Admin <span>Panel</span></h1>
+        <div class="logo-box">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 28 28"
+            fill="none"
+            stroke="white"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="5" cy="17" r="1.5" fill="white" />
+            <path d="M8 13.5a5 5 0 0 1 0 7" />
+            <path d="M11 10.5a9 9 0 0 1 0 13" />
+            <circle cx="23" cy="11" r="1.5" fill="white" />
+            <path d="M20 7.5a5 5 0 0 0 0 7" />
+            <path d="M17 4.5a9 9 0 0 0 0 13" />
+          </svg>
+        </div>
+        <h1>Echo<span>Net</span> — Admin</h1>
       </div>
-      <div class="nav-links">
-        <a href="/logout">Logout</a>
+      <div class="header-right">
+        <span class="badge-admin"
+          ><i class="fa-solid fa-shield-halved"></i> Admin</span
+        >
+        <a href="/logout" class="logout-btn"
+          ><i class="fa-solid fa-right-from-bracket"></i> Logout</a
+        >
       </div>
     </div>
 
     <div class="wrap">
+      <div class="card card-full">
+        <div class="card-title">
+          <i class="fa-solid fa-bullhorn"></i> Broadcast to All
+        </div>
+        <div class="bc-form">
+          <textarea
+            id="bc-msg"
+            placeholder="Send a message to all users..."
+          ></textarea>
+          <button class="bc-btn" onclick="doBroadcast()">
+            <i class="fa-solid fa-paper-plane"></i> Send
+          </button>
+        </div>
+      </div>
       <div class="card">
-        <div class="card-title">🟢 Online Users</div>
-        <ul id="admin-users">
+        <div class="card-title">
+          <i class="fa-solid fa-circle-dot"></i> Online Users
+        </div>
+        <ul class="user-list" id="admin-users">
           <li class="empty">Loading...</li>
         </ul>
       </div>
+
       <div class="card">
-        <div class="card-title">📊 Stats</div>
+        <div class="card-title">
+          <i class="fa-solid fa-chart-simple"></i> Stats
+        </div>
         <div class="stats">
           <div class="stat">
             <span class="stat-label">Online now</span>
@@ -382,32 +442,25 @@
           </div>
         </div>
       </div>
+
       <div class="card">
-        <div class="card-title">🚫 Banned Users</div>
-        <ul id="ban-list">
+        <div class="card-title">
+          <i class="fa-solid fa-ban"></i> Banned Users
+        </div>
+        <ul class="user-list" id="ban-list">
           <li class="empty">Loading...</li>
         </ul>
       </div>
 
       <div class="card">
-        <div class="card-title">📋 Activity Log</div>
+        <div class="card-title">
+          <i class="fa-solid fa-scroll"></i> Activity Log
+        </div>
         <div id="log">
           <div class="log-row">
-            <span class="log-t">--:--</span
-            ><span class="log-m">Waiting for activity...</span>
+            <span class="log-t">--:--</span>
+            <span class="log-m">Waiting for activity...</span>
           </div>
-        </div>
-      </div>
-      <div class="card-broadcast">
-        <div class="card-title">📢 Broadcast to All</div>
-        <div class="bc-form">
-          <textarea
-            id="bc-msg"
-            placeholder="Send a message to all users..."
-          ></textarea>
-          <button class="bc-btn" onclick="doBroadcast()">
-            Send to Everyone
-          </button>
         </div>
       </div>
     </div>
@@ -417,7 +470,7 @@
       let actions = 0;
       let broadcasts = 0;
 
-      socket.on("userlist", ({ users }) => {
+      socket.on("online_users", ({ users }) => {
         const list = document.getElementById("admin-users");
         const online = users.filter((u) => u && u !== "admin");
         document.getElementById("s-online").textContent = online.length;
@@ -431,10 +484,10 @@
           li.id = `auser-${u}`;
           li.innerHTML = `
             <span class="udot"></span>
-            <span>${u}</span>
+            <span style="font-weight:500">${u}</span>
             <div class="actions">
-              <button class="bkick" onclick="doKick('${u}')">KICK</button>
-              <button class="bban" onclick="doBan('${u}')">BAN</button>
+              <button class="bkick" onclick="doKick('${u}')">Kick</button>
+              <button class="bban" onclick="doBan('${u}')">Ban</button>
             </div>`;
           list.appendChild(li);
         });
@@ -454,17 +507,34 @@
         bans.forEach((b) => {
           const li = document.createElement("li");
           li.id = `buser-${b}`;
-          li.innerHTML = `<span class="bdot"></span><span>${b}</span>
-                <div class="actions">
-                    <button class="bunban" onclick="doUnban('${b}')">UNBAN</button>
-                </div>`;
+          li.innerHTML = `
+            <span class="bdot"></span>
+            <span style="font-weight:500">${b}</span>
+            <div class="actions">
+              <button class="bunban" onclick="doUnban('${b}')">Unban</button>
+            </div>`;
           list.appendChild(li);
         });
       });
 
+      socket.on("unban_ok", ({ name }) => {
+        log(`✅ Unbanned ${name}`);
+        const li = document.getElementById(`buser-${name}`);
+        if (li) li.remove();
+        const list = document.getElementById("ban-list");
+        if (!list.children.length)
+          list.innerHTML = '<li class="empty">No banned users</li>';
+      });
+
+      socket.on("kicked", () => {
+        window.location.href = "/logout";
+      });
+      socket.on("load_broadcasts", ({ msgs }) => {
+        msgs.forEach(([msg, time]) => log(`📢 ${msg}`));
+      });
+
       function log(text) {
         const box = document.getElementById("log");
-        // Remove placeholder
         const placeholder = box.querySelector(".log-m");
         if (
           placeholder &&
@@ -488,10 +558,9 @@
         socket.emit("kick_user", { target: name });
         actions++;
         document.getElementById("s-actions").textContent = actions;
-        log(`⚠ Kicked ${name}`);
+        log(`⚠️ Kicked ${name}`);
         const li = document.getElementById(`auser-${name}`);
         if (li) li.remove();
-        // Update online count
         const current = parseInt(
           document.getElementById("s-online").textContent,
         );
@@ -516,11 +585,14 @@
           0,
           current - 1,
         );
+        socket.emit("get_bans");
       }
 
       function doUnban(name) {
         if (!confirm(`Unban ${name}?`)) return;
         socket.emit("unban_user", { target: name });
+        actions++;
+        document.getElementById("s-actions").textContent = actions;
       }
 
       function doBroadcast() {
@@ -533,7 +605,9 @@
         log(`📢 Broadcast: ${msg}`);
       }
 
+      socket.emit("get_users");
       socket.emit("get_bans");
+
       setInterval(() => {
         socket.emit("get_users");
         socket.emit("get_bans");
