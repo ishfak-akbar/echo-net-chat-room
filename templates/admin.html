@@ -467,13 +467,9 @@
 
     <script>
       const socket = io();
-      let actions = parseInt(localStorage.getItem("admin_actions") || "0");
-      let broadcasts = parseInt(
-        localStorage.getItem("admin_broadcasts") || "0",
-      );
-      document.getElementById("s-actions").textContent = actions;
-      document.getElementById("s-bc").textContent = broadcasts;
 
+      let actions = parseInt(localStorage.getItem("admin_actions") || "0");
+      document.getElementById("s-actions").textContent = actions;
       socket.on("online_users", ({ users }) => {
         const list = document.getElementById("admin-users");
         const online = users.filter((u) => u && u !== "admin");
@@ -522,12 +518,12 @@
       });
 
       socket.on("unban_ok", ({ name }) => {
-        log(`✅ Unbanned ${name}`);
         const li = document.getElementById(`buser-${name}`);
         if (li) li.remove();
         const list = document.getElementById("ban-list");
         if (!list.children.length)
           list.innerHTML = '<li class="empty">No banned users</li>';
+        log(`✅ Unbanned ${name}`);
       });
 
       socket.on("kicked", () => {
@@ -536,6 +532,14 @@
       socket.on("load_broadcasts", ({ msgs }) => {
         msgs.forEach(([msg, time]) => log(`📢 ${msg}`));
       });
+
+      socket.on("broadcast_count", ({ count }) => {
+        document.getElementById("s-bc").textContent = count;
+      });
+      socket.on("connect", () => {
+        socket.emit("get_broadcast_count");
+      });
+      socket.emit("get_broadcast_count");
 
       function log(text) {
         const box = document.getElementById("log");
@@ -607,8 +611,6 @@
         if (!msg) return;
         socket.emit("broadcast_msg", { msg });
         document.getElementById("bc-msg").value = "";
-        broadcasts++;
-        localStorage.setItem('admin_broadcasts', broadcasts);
         document.getElementById("s-bc").textContent = broadcasts;
         log(`📢 Broadcast: ${msg}`);
       }

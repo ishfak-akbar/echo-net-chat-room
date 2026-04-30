@@ -6,6 +6,7 @@ import os
 from werkzeug.utils import secure_filename
 import database as db
 from datetime import datetime
+from flask_socketio import disconnect
 
 app = Flask(__name__)
 app.secret_key = 'tcpchatroom_secret_key'
@@ -422,6 +423,12 @@ def handle_kick(data):
     target = data.get('target', '')
     if target and tcp:
         tcp.send(f'KICK {target}\n'.encode('ascii'))
+
+        from datetime import datetime
+        time = datetime.now().strftime('%I:%M %p')
+        db.save_broadcast(f'⚠️ {target} was kicked by Admin', time)
+        socketio.emit('broadcast_notice', {'msg': f'⚠️ {target} was kicked by Admin', 'time': time})
+
         target_sid = nick_to_sid.get(target)
         if target_sid:
             db.set_offline(target)
@@ -434,13 +441,8 @@ def handle_kick(data):
             nick_map.pop(target_sid, None)
             nick_to_sid.pop(target, None)
             socketio.emit('kicked', {}, to=target_sid)
-            socketio.disconnect(target_sid)
+            disconnect(sid=target_sid)
             broadcast_user_lists()
-
-        from datetime import datetime
-        time = datetime.now().strftime('%I:%M %p')
-        socketio.emit('broadcast_notice', {'msg': f'⚠️ {target} was kicked by Admin', 'time': time})
-        db.save_broadcast(f'⚠️ {target} was kicked by Admin', time)
 
 
 @socketio.on('ban_user')
@@ -457,6 +459,11 @@ def handle_ban(data):
         bans = db.get_banned_users()
         socketio.emit('banlist', {'bans': bans}, to=sid)
 
+        from datetime import datetime
+        time = datetime.now().strftime('%I:%M %p')
+        db.save_broadcast(f'⛔ {target} was permanently banned by Admin', time)
+        socketio.emit('broadcast_notice', {'msg': f'⛔ {target} was permanently banned by Admin', 'time': time})
+
         target_sid = nick_to_sid.get(target)
         if target_sid:
             old_tcp = tcp_clients.pop(target_sid, None)
@@ -468,14 +475,8 @@ def handle_ban(data):
             nick_map.pop(target_sid, None)
             nick_to_sid.pop(target, None)
             socketio.emit('banned', {}, to=target_sid)
-            socketio.disconnect(target_sid)
+            disconnect(sid=target_sid)
             broadcast_user_lists()
-
-        from datetime import datetime
-        time = datetime.now().strftime('%I:%M %p')
-        socketio.emit('broadcast_notice', {'msg': f'⛔ {target} was permanently banned by Admin', 'time': time})
-        db.save_broadcast(f'⛔ {target} was permanently banned by Admin', time)
-
 
 @socketio.on('broadcast_msg')
 def handle_broadcast(data):
@@ -486,7 +487,15 @@ def handle_broadcast(data):
         time = datetime.now().strftime('%I:%M %p')
         db.save_broadcast(msg, time)
         socketio.emit('broadcast_notice', {'msg': msg, 'time': time})
+        socketio.emit('broadcast_count', {
+            'count': len(db.get_broadcasts())
+        })
 
+@socketio.on("get_broadcast_count")
+def handle_broadcast_count():
+    emit("broadcast_count", {
+        "count": len(db.get_broadcasts())
+    }, to=request.sid)
 
 @socketio.on('create_group')
 def handle_create_group(data):
@@ -515,13 +524,15 @@ def handle_unban(data):
     target = data.get('target', '')
     if target and tcp:
         tcp.send(f'UNBAN {target}\n'.encode('ascii'))
-        db.remove_banned_user(target)  # add this
+        db.remove_banned_user(target)
         bans = db.get_banned_users()
         emit('banlist', {'bans': bans}, to=sid)
+        emit('unban_ok', {'name': target}, to=sid)
+
         from datetime import datetime
         time = datetime.now().strftime('%I:%M %p')
-        socketio.emit('broadcast_notice', {'msg': f'✅ {target} was unbanned by Admin', 'time': time})
         db.save_broadcast(f'✅ {target} was unbanned by Admin', time)
+        socketio.emit('broadcast_notice', {'msg': f'✅ {target} was unbanned by Admin', 'time': time})
 
 
 @socketio.on('get_bans')
