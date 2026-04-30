@@ -122,10 +122,10 @@
         align-items: center;
         gap: 12px;
         padding: 12px 14px;
+        border: 1px solid transparent;
         border-radius: 14px;
         margin-bottom: 4px;
         cursor: pointer;
-        transition: 0.2s;
       }
 
       .user-item:hover,
@@ -188,11 +188,8 @@
 
       /* Global Chat Link */
       .global-link {
-        margin: 10px 10px 0;
-        padding: 14px 16px;
-        background: rgba(20, 184, 166, 0.08);
-        border: 1px solid var(--border);
-        border-radius: 14px;
+        padding: 19px 16px;
+        border-top: 1px solid var(--border);
         cursor: pointer;
         font-weight: 600;
         display: flex;
@@ -1009,7 +1006,7 @@
 
       function openGroupModal() {
         document.getElementById("group-overlay").classList.add("show");
-        socket.emit("request_userlist");
+        renderMemberChecklist(allUsersList);
       }
 
       function closeGroupModal() {
@@ -1022,6 +1019,7 @@
           document.querySelectorAll("#member-list input:checked"),
         ).map((cb) => cb.value);
         if (!name) return alert("Group name required");
+        if (checked.length === 0) return alert("Select at least one member");
         socket.emit("create_group", { name, members: checked });
         closeGroupModal();
       }
