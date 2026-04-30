@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>EchoNet</title>
+    <title>EchoNet — Join</title>
     <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -18,15 +18,14 @@
       }
 
       :root {
-        --bg: #0f1115;
-        --surface: #181a20;
-        --border: #262a33;
-
-        --accent: #14b8a6;
-        --text: #e6e8ec;
-        --muted: #8b949e;
-
-        --error: #ff6b6b;
+        --bg: #0a1218;
+        --card: #132129;
+        --border: #23404f;
+        --accent-start: #0f766e;
+        --accent-end: #14b8a6;
+        --text: #e0f2f1;
+        --muted: #94c4c0;
+        --error: #f87171;
       }
 
       body {
@@ -41,61 +40,105 @@
         overflow: hidden;
       }
 
-      body::before {
-        content: "";
+      .bg-mesh {
         position: fixed;
         inset: 0;
-        background-image: radial-gradient(circle, #1f2023 1px, transparent 1px);
-        background-size: 28px 28px;
-        opacity: 0.6;
         z-index: 0;
+        background:
+          radial-gradient(
+            ellipse 80% 60% at 20% 10%,
+            rgba(15, 118, 110, 0.25) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse 60% 50% at 80% 80%,
+            rgba(20, 184, 166, 0.15) 0%,
+            transparent 55%
+          ),
+          radial-gradient(
+            ellipse 50% 40% at 60% 20%,
+            rgba(6, 78, 59, 0.2) 0%,
+            transparent 50%
+          ),
+          linear-gradient(160deg, #0a1218 0%, #0d1e2a 50%, #0a1218 100%);
+      }
+
+      .bg-grid {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        background-image:
+          linear-gradient(rgba(20, 184, 166, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(20, 184, 166, 0.04) 1px, transparent 1px);
+        background-size: 40px 40px;
       }
 
       .orb {
         position: fixed;
-        width: 500px;
-        height: 500px;
-        background: radial-gradient(
-          circle,
-          rgba(79, 255, 176, 0.06) 0%,
-          transparent 65%
-        );
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        filter: blur(80px);
         z-index: 0;
-        animation: breathe 5s ease-in-out infinite;
+        animation: drift 8s ease-in-out infinite;
+      }
+      .orb-1 {
+        width: 400px;
+        height: 400px;
+        background: rgba(15, 118, 110, 0.15);
+        top: -100px;
+        left: -100px;
+        animation-delay: 0s;
+      }
+      .orb-2 {
+        width: 300px;
+        height: 300px;
+        background: rgba(20, 184, 166, 0.1);
+        bottom: -80px;
+        right: -80px;
+        animation-delay: -4s;
+      }
+      .orb-3 {
+        width: 200px;
+        height: 200px;
+        background: rgba(6, 182, 212, 0.08);
+        top: 50%;
+        right: 20%;
+        animation-delay: -2s;
       }
 
-      @keyframes breathe {
+      @keyframes drift {
         0%,
         100% {
-          transform: translate(-50%, -50%) scale(1);
+          transform: translate(0, 0) scale(1);
         }
-        50% {
-          transform: translate(-50%, -50%) scale(1.15);
+        33% {
+          transform: translate(20px, -20px) scale(1.05);
+        }
+        66% {
+          transform: translate(-15px, 15px) scale(0.95);
         }
       }
 
-      .card {
+      .wrapper {
         position: relative;
         z-index: 1;
+        display: flex;
         width: 100%;
-        max-width: 450px;
-        background: var(--surface);
+        max-width: 900px;
+        min-height: 540px;
+        margin: 24px;
+        border-radius: 28px;
+        overflow: hidden;
         border: 1px solid var(--border);
-        border-radius: 20px;
-        padding: 44px 36px;
         box-shadow:
-          0 0 80px rgba(79, 255, 176, 0.04),
-          0 30px 80px rgba(0, 0, 0, 0.5);
-        animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+          0 40px 100px rgba(0, 0, 0, 0.6),
+          0 0 0 1px rgba(20, 184, 166, 0.08);
+        animation: rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       @keyframes rise {
         from {
           opacity: 0;
-          transform: translateY(24px);
+          transform: translateY(32px);
         }
         to {
           opacity: 1;
@@ -103,75 +146,188 @@
         }
       }
 
-      .brand {
+      .panel-left {
+        width: 42%;
+        background: linear-gradient(
+          145deg,
+          #0f2a35 0%,
+          #0a1e28 40%,
+          #071520 100%
+        );
+        padding: 52px 40px;
         display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 24px;
+        flex-direction: column;
+        justify-content: space-between;
+        border-right: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
       }
 
-      .brand-icon {
-        width: 44px;
-        height: 44px;
-        background: var(--accent);
-        border-radius: 12px;
+      .panel-left::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          ellipse 100% 60% at 0% 0%,
+          rgba(15, 118, 110, 0.2) 0%,
+          transparent 60%
+        );
+      }
+
+      .brand {
+        position: relative;
+        z-index: 1;
+      }
+
+      .logo-box {
+        width: 54px;
+        height: 54px;
+        background: linear-gradient(
+          135deg,
+          var(--accent-start),
+          var(--accent-end)
+        );
+        border-radius: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 26px;
-        flex-shrink: 0;
+        margin-bottom: 20px;
+        box-shadow:
+          0 0 20px rgba(20, 184, 166, 0.4),
+          0 0 40px rgba(20, 184, 166, 0.15);
       }
 
       .brand-name {
-        font-size: 26px;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-        color: var(--text);
+        font-size: 32px;
+        font-weight: 800;
+        letter-spacing: -1px;
+        line-height: 1;
+        margin-bottom: 10px;
       }
 
       .brand-name span {
-        color: var(--accent);
+        color: var(--accent-end);
       }
 
-      h1 {
-        font-size: 25px;
-        font-weight: 600;
-        letter-spacing: -0.5px;
-        margin-bottom: 30px;
-      }
-
-      .sub {
+      .slogan {
+        font-size: 13.5px;
         color: var(--muted);
-        font-size: 16px;
+        line-height: 1.6;
+        font-weight: 400;
+      }
+
+      .slogan em {
+        color: var(--accent-end);
+        font-style: normal;
+        font-weight: 600;
+      }
+
+      .wave-deco {
+        position: relative;
+        z-index: 1;
+      }
+
+      .wave-deco svg {
+        opacity: 0.3;
+        filter: drop-shadow(0 0 8px rgba(20, 184, 166, 0.5));
+      }
+
+      .feature-pills {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .pill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+
+      .pill-dot {
+        width: 6px;
+        height: 6px;
+        background: var(--accent-end);
+        border-radius: 50%;
+        box-shadow: 0 0 6px var(--accent-end);
+        flex-shrink: 0;
+      }
+
+      .panel-right {
+        flex: 1;
+        background: var(--card);
+        padding: 52px 44px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .form-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 6px;
+        letter-spacing: -0.5px;
+      }
+
+      .form-sub {
+        font-size: 13px;
+        color: var(--muted);
         margin-bottom: 32px;
       }
 
-      .sub span {
-        color: var(--accent);
+      .error-box {
+        background: rgba(248, 113, 113, 0.08);
+        border: 1px solid rgba(248, 113, 113, 0.25);
+        color: var(--error);
+        padding: 11px 16px;
+        border-radius: 10px;
+        font-size: 13px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
 
       .field {
-        margin-bottom: 17px;
+        margin-bottom: 18px;
       }
 
       label {
         display: block;
-        font-size: 14px;
+        font-size: 11px;
         font-weight: 700;
-        letter-spacing: 1px;
+        letter-spacing: 1.2px;
         text-transform: uppercase;
         color: var(--muted);
-        margin-bottom: 7px;
+        margin-bottom: 8px;
+      }
+
+      .input-wrap {
+        position: relative;
+      }
+
+      .input-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--muted);
+        font-size: 14px;
+        pointer-events: none;
       }
 
       input {
         width: 100%;
-        background: var(--bg);
+        background: #0a1218;
         border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 11px 14px;
+        border-radius: 12px;
+        padding: 12px 14px 12px 40px;
         color: var(--text);
-        font-family: "JetBrains Mono", monospace;
+        font-family: "Poppins", sans-serif;
         font-size: 14px;
         outline: none;
         transition:
@@ -180,44 +336,35 @@
       }
 
       input:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px rgba(79, 255, 176, 0.08);
+        border-color: var(--accent-end);
+        box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
       }
 
       input::placeholder {
-        color: var(--muted);
+        color: #3a5a68;
       }
 
       .hint {
-        font-size: 15px;
+        font-size: 11.5px;
         color: var(--muted);
-        margin-top: 5px;
-      }
-
-      .hint b {
-        color: var(--accent);
-      }
-
-      .error-box {
-        background: rgba(255, 107, 107, 0.08);
-        border: 1px solid rgba(255, 107, 107, 0.25);
-        color: var(--error);
-        padding: 10px 14px;
-        border-radius: 8px;
-        font-size: 16px;
-        margin-bottom: 18px;
+        margin-top: 6px;
+        opacity: 0.7;
       }
 
       .btn {
         width: 100%;
-        margin-top: 27px;
-        padding: 12px;
-        background: var(--accent);
-        color: #000;
+        margin-top: 28px;
+        padding: 14px;
+        background: linear-gradient(
+          135deg,
+          var(--accent-start),
+          var(--accent-end)
+        );
+        color: white;
         border: none;
-        border-radius: 10px;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 18px;
+        border-radius: 12px;
+        font-family: "Poppins", sans-serif;
+        font-size: 15px;
         font-weight: 700;
         cursor: pointer;
         letter-spacing: 0.3px;
@@ -225,11 +372,24 @@
           transform 0.15s,
           box-shadow 0.15s,
           opacity 0.15s;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .btn::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        );
       }
 
       .btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 28px rgba(79, 255, 176, 0.25);
+        box-shadow: 0 8px 28px rgba(20, 184, 166, 0.35);
       }
 
       .btn:active {
@@ -239,41 +399,136 @@
     </style>
   </head>
   <body>
-    <div class="orb"></div>
-    <div class="card">
-      <div class="brand">
-        <div class="brand-icon">⚡</div>
-        <div class="brand-name">Echo<span>Net</span></div>
+    <div class="bg-mesh"></div>
+    <div class="bg-grid"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+
+    <div class="wrapper">
+      <div class="panel-left">
+        <div class="brand">
+          <div class="logo-box">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="30"
+              height="30"
+              viewBox="0 0 28 28"
+              fill="none"
+              stroke="white"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="5" cy="17" r="1.5" fill="white" />
+              <path d="M8 13.5a5 5 0 0 1 0 7" />
+              <path d="M10 10.5a9 9 0 0 1 0 13" />
+              <circle cx="23" cy="11" r="1.5" fill="white" />
+              <path d="M20 7.5a5 5 0 0 0 0 7" />
+              <path d="M18 4.5a9 9 0 0 0 0 13" />
+            </svg>
+          </div>
+          <div class="brand-name">Echo<span>Net</span></div>
+          <div class="slogan">
+            Your words travel far —<br />
+            and <em>come back stronger.</em><br />
+            <span style="font-size: 12px; opacity: 0.6"
+              >Real-time messaging, reimagined.</span
+            >
+          </div>
+        </div>
+
+        <div class="wave-deco">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="120"
+            height="80"
+            viewBox="0 0 120 80"
+            fill="none"
+            stroke="#14b8a6"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          >
+            <path
+              d="M10 40 Q20 20 30 40 Q40 60 50 40 Q60 20 70 40 Q80 60 90 40 Q100 20 110 40"
+            />
+            <path
+              d="M10 55 Q20 38 30 55 Q40 72 50 55 Q60 38 70 55 Q80 72 90 55 Q100 38 110 55"
+              opacity="0.5"
+            />
+            <path
+              d="M10 25 Q20 10 30 25 Q40 40 50 25 Q60 10 70 25 Q80 40 90 25 Q100 10 110 25"
+              opacity="0.3"
+            />
+          </svg>
+        </div>
+
+        <div class="feature-pills">
+          <div class="pill">
+            <span class="pill-dot"></span> Direct & Group messaging
+          </div>
+          <div class="pill">
+            <span class="pill-dot"></span> Global broadcast channel
+          </div>
+          <div class="pill">
+            <span class="pill-dot"></span> Real-time delivery receipts
+          </div>
+          <div class="pill">
+            <span class="pill-dot"></span> Profile pictures & presence
+          </div>
+        </div>
       </div>
 
-      <h1>Join the Room</h1>
-
-      {% if error %}
-      <div class="error-box">⚠ {{ error }}</div>
-      {% endif %}
-
-      <form method="POST">
-        <div class="field">
-          <label>Nickname</label>
-          <input
-            type="text"
-            name="nickname"
-            placeholder="Enter your nickname"
-            autocomplete="off"
-            required
-          />
+      <div class="panel-right">
+        <div class="form-title">Welcome back 👋</div>
+        <div class="form-sub">
+          Enter your nickname to join the conversation.
         </div>
-        <div class="field">
-          <label
-            >Password
-            <span style="color: var(--muted); font-weight: 400"
-              >(admin only)</span
-            ></label
-          >
-          <input type="password" name="password" placeholder="*********" />
-        </div>
-        <button class="btn" type="submit">Connect →</button>
-      </form>
+
+        {% if error %}
+        <div class="error-box">⚠ {{ error }}</div>
+        {% endif %}
+
+        <form method="POST">
+          <div class="field">
+            <label>Nickname</label>
+            <div class="input-wrap">
+              <span class="input-icon">@</span>
+              <input
+                type="text"
+                name="nickname"
+                placeholder="your_nickname"
+                autocomplete="off"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="field">
+            <label
+              >Password
+              <span
+                style="
+                  color: var(--muted);
+                  font-weight: 400;
+                  text-transform: none;
+                  letter-spacing: 0;
+                "
+                >(admin only)</span
+              ></label
+            >
+            <div class="input-wrap">
+              <span class="input-icon">🔒</span>
+              <input type="password" name="password" placeholder="••••••••" />
+            </div>
+            <div class="hint">
+              Leave blank unless you're connecting as admin.
+            </div>
+          </div>
+
+          <button class="btn" type="submit">Connect to EchoNet →</button>
+        </form>
+      </div>
     </div>
   </body>
 </html>
