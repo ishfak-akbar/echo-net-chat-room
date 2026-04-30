@@ -65,11 +65,7 @@
       .logo-box {
         width: 38px;
         height: 38px;
-        background: linear-gradient(
-          135deg,
-          var(--accent-start),
-          var(--accent-end)
-        );
+        background: linear-gradient(135deg, #17a499, var(--accent-end));
         border-radius: 11px;
         display: flex;
         align-items: center;
@@ -77,6 +73,9 @@
         font-size: 23px;
         color: white;
         font-weight: 700;
+        box-shadow:
+          0 0 10px rgba(20, 184, 166, 0.6),
+          0 0 20px rgba(20, 184, 166, 0.1);
       }
 
       .logo-name {
@@ -379,10 +378,10 @@
         display: flex;
       }
       .sidebar {
-        width: 260px;
+        width: 300px;
       }
       .right-sidebar {
-        width: 260px;
+        width: 300px;
       }
       body {
         font-family: "Poppins", sans-serif;
@@ -420,6 +419,16 @@
       }
       .input-row {
         padding: 12px 20px;
+      }
+      .list-container::-webkit-scrollbar {
+        width: 3px;
+      }
+      .list-container::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .list-container::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 9999px;
       }
     </style>
   </head>
@@ -546,7 +555,14 @@
         <div style="display: flex; align-items: center; gap: 12px">
           <div
             class="avatar"
-            style="width: 40px; height: 40px; font-size: 18px"
+            style="
+              width: 40px;
+              height: 40px;
+              font-size: 18px;
+              box-shadow:
+                0 0 10px rgba(20, 184, 166, 0.6),
+                0 0 20px rgba(20, 184, 166, 0.1);
+            "
           >
             {{ nickname[0].upper() if nickname else 'U' }}
           </div>
