@@ -174,6 +174,13 @@ The SQLite database (`echonet.db`) is auto-created on first run. It stores:
 - Banned users
 
 > Deleting `echonet.db` resets all data. Profile pictures in `static/dp/` are unaffected.
+---
+
+## 📸 Screenshots
+
+| Login Page | Chat Page | Admin Page | Broadcast | Create Group |
+|-------------------|------------|-------------|-------------------|------------|
+| ![Login Page](screenshots/login.png) | ![ChatPage](screenshots/chat.png) | ![Post Page](screenshots/admin.png) | ![Dashboard Page](screenshots/broadcast.png) | ![Create Post Page](screenshots/group.png) |
 
 ---
 
