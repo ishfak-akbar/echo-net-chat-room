@@ -569,23 +569,51 @@
       <div style="padding: 18px 20px; border-top: 1px solid var(--border)">
         <div style="display: flex; align-items: center; gap: 12px">
           <div
-            class="avatar"
-            style="
-              width: 40px;
-              height: 40px;
-              font-size: 18px;
-              box-shadow:
-                0 0 10px rgba(20, 184, 166, 0.6),
-                0 0 20px rgba(20, 184, 166, 0.1);
-            "
+            style="position: relative; cursor: pointer"
+            onclick="document.getElementById('dp-upload').click()"
           >
-            {{ nickname[0].upper() if nickname else 'U' }}
+            <div
+              class="avatar"
+              id="my-avatar"
+              style="
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+                overflow: hidden;
+              "
+            >
+              {{ nickname[0].upper() if nickname else 'U' }}
+            </div>
+            <div
+              style="
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                background: var(--accent-end);
+                border-radius: 50%;
+                width: 14px;
+                height: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 9px;
+              "
+            >
+              ✏️
+            </div>
           </div>
           <div>
             <div style="font-weight: 600">{{ nickname }}</div>
             <div style="font-size: 12.5px; color: var(--online)">● Online</div>
           </div>
         </div>
+        <input
+          type="file"
+          id="dp-upload"
+          accept="image/*"
+          style="display: none"
+          onchange="uploadDP(this)"
+        />
       </div>
     </div>
 
@@ -926,14 +954,15 @@
           const div = document.createElement("div");
           div.className = "user-item";
           div.id = `${listId}-${u}`;
+          const avatarId = `avatar-${listId}-${u}`;
           div.innerHTML = `
-          <div class="avatar">${u[0].toUpperCase()}</div>
+          <div class="avatar" id="${avatarId}">${u[0].toUpperCase()}</div>
           <div class="user-info">
             <div class="user-name">${u}</div>
             <div class="last-msg">${last.msg || "No messages yet"}</div>
           </div>
-          ${unread ? `<span class="unread-badge">${unread}</span>` : ""}
-        `;
+          ${unread ? `<span class="unread-badge">${unread}</span>` : ""}`;
+          loadDP(u, avatarId);
           div.onclick = () => openDM(u);
           container.appendChild(div);
         });
@@ -1064,6 +1093,7 @@
 
         document.getElementById("right-avatar").textContent =
           user[0].toUpperCase();
+        loadDP(user, "right-avatar");
         document.getElementById("right-name").textContent = user;
         const isOnline = onlineUsersList.includes(user);
         document.getElementById("right-status").innerHTML = isOnline
@@ -1072,10 +1102,11 @@
 
         document.getElementById("chat-title").innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;">
-          <div class="avatar" style="width:42px;height:42px;font-size:18px;">${user[0].toUpperCase()}</div>
-          <div><div style="font-weight:600;">${user}</div></div>
+        <div class="avatar" id="chat-header-avatar" style="width:42px;height:42px;font-size:18px;overflow:hidden;">${user[0].toUpperCase()}</div>
+        <div><div style="font-weight:600;">${user}</div></div>
         </div>
       `;
+        loadDP(user, "chat-header-avatar");
 
         document.getElementById("empty-state").style.display = "none";
         document.getElementById("chat-header").style.display = "flex";
@@ -1298,6 +1329,36 @@
         else if (activeTab === "tab-groups") showGroups();
         else showOnline();
       }
+      function uploadDP(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append("dp", file);
+        fetch("/upload_dp", { method: "POST", body: formData })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.url) setMyAvatar(data.url);
+          });
+      }
+
+      function setMyAvatar(url) {
+        const el = document.getElementById("my-avatar");
+        el.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+      }
+
+      function loadDP(nickname, elementId) {
+        fetch(`/get_dp/${nickname}`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.url) {
+              const el = document.getElementById(elementId);
+              if (el)
+                el.innerHTML = `<img src="${data.url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+            }
+          });
+      }
+
+      loadDP("{{ nickname }}", "my-avatar");
 
       document.getElementById("msg-input").addEventListener("keydown", (e) => {
         if (e.key === "Enter") sendMsg();

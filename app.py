@@ -2,11 +2,16 @@ import socket
 import threading
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, emit
-
+import os
+from werkzeug.utils import secure_filename
 import database as db
 
 app = Flask(__name__)
 app.secret_key = 'tcpchatroom_secret_key'
+
+UPLOAD_FOLDER = os.path.join('static', 'dp')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 tcp_clients = {}
@@ -187,6 +192,29 @@ def admin():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+
+@app.route('/upload_dp', methods=['POST'])
+def upload_dp():
+    if 'nickname' not in session:
+        return {'error': 'not logged in'}, 401
+    file = request.files.get('dp')
+    if not file:
+        return {'error': 'no file'}, 400
+    ext = file.filename.rsplit('.', 1)[-1].lower()
+    if ext not in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
+        return {'error': 'invalid type'}, 400
+    filename = secure_filename(f"{session['nickname']}.{ext}")
+    file.save(os.path.join(UPLOAD_FOLDER, filename))
+    return {'url': url_for('static', filename=f'dp/{filename}')}, 200
+
+@app.route('/get_dp/<nickname>')
+def get_dp(nickname):
+    for ext in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
+        path = os.path.join(UPLOAD_FOLDER, f'{nickname}.{ext}')
+        if os.path.exists(path):
+            return {'url': url_for('static', filename=f'dp/{nickname}.{ext}')}, 200
+    return {'url': None}, 200
 
 
 @socketio.on('connect')
