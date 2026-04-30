@@ -308,6 +308,7 @@ def on_connect():
         t.start()
 
         emit('connected', {'nick': nick})
+        broadcast_user_lists()
         broadcasts = db.get_broadcasts()
         emit('load_broadcasts', {'msgs': broadcasts}, to=sid)
 
@@ -421,6 +422,21 @@ def handle_kick(data):
     target = data.get('target', '')
     if target and tcp:
         tcp.send(f'KICK {target}\n'.encode('ascii'))
+        target_sid = nick_to_sid.get(target)
+        if target_sid:
+            db.set_offline(target)
+            old_tcp = tcp_clients.pop(target_sid, None)
+            if old_tcp:
+                try:
+                    old_tcp.close()
+                except:
+                    pass
+            nick_map.pop(target_sid, None)
+            nick_to_sid.pop(target, None)
+            socketio.emit('kicked', {}, to=target_sid)
+            socketio.disconnect(target_sid)
+            broadcast_user_lists()
+
         from datetime import datetime
         time = datetime.now().strftime('%I:%M %p')
         socketio.emit('broadcast_notice', {'msg': f'⚠️ {target} was kicked by Admin', 'time': time})
@@ -434,6 +450,27 @@ def handle_ban(data):
     target = data.get('target', '')
     if target and tcp:
         tcp.send(f'BAN {target}\n'.encode('ascii'))
+        
+        db.add_banned_user(target)
+        db.set_offline(target)
+
+        bans = db.get_banned_users()
+        socketio.emit('banlist', {'bans': bans}, to=sid)
+
+        target_sid = nick_to_sid.get(target)
+        if target_sid:
+            old_tcp = tcp_clients.pop(target_sid, None)
+            if old_tcp:
+                try:
+                    old_tcp.close()
+                except:
+                    pass
+            nick_map.pop(target_sid, None)
+            nick_to_sid.pop(target, None)
+            socketio.emit('banned', {}, to=target_sid)
+            socketio.disconnect(target_sid)
+            broadcast_user_lists()
+
         from datetime import datetime
         time = datetime.now().strftime('%I:%M %p')
         socketio.emit('broadcast_notice', {'msg': f'⛔ {target} was permanently banned by Admin', 'time': time})
@@ -478,6 +515,9 @@ def handle_unban(data):
     target = data.get('target', '')
     if target and tcp:
         tcp.send(f'UNBAN {target}\n'.encode('ascii'))
+        db.remove_banned_user(target)  # add this
+        bans = db.get_banned_users()
+        emit('banlist', {'bans': bans}, to=sid)
         from datetime import datetime
         time = datetime.now().strftime('%I:%M %p')
         socketio.emit('broadcast_notice', {'msg': f'✅ {target} was unbanned by Admin', 'time': time})
@@ -487,9 +527,8 @@ def handle_unban(data):
 @socketio.on('get_bans')
 def handle_get_bans():
     sid = request.sid
-    tcp = get_tcp(sid)
-    if tcp:
-        tcp.send('BANLIST\n'.encode('ascii'))
+    bans = db.get_banned_users()
+    emit('banlist', {'bans': bans}, to=sid)
 
 @socketio.on('get_group_unread')
 def handle_group_unread():

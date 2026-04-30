@@ -995,6 +995,14 @@
           );
         }
       });
+      socket.on("kicked", () => {
+        alert("You have been kicked by Admin.");
+        window.location.href = "/logout";
+      });
+      socket.on("banned", () => {
+        alert("You have been banned.");
+        window.location.href = "/logout";
+      });
 
       function renderUserList(listId, users) {
         const container = document.getElementById(listId);
@@ -1324,7 +1332,6 @@
       }
 
       function showOnline() {
-        /* same as before */
         document.getElementById("user-list").style.display = "block";
         document.getElementById("all-user-list").style.display = "none";
         document.getElementById("groups-section").style.display = "none";
