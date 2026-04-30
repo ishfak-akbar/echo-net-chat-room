@@ -55,6 +55,12 @@ def init_db():
         nickname TEXT PRIMARY KEY,
         banned_at TEXT
     )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS group_read (
+        nickname TEXT,
+        group_name TEXT,
+        last_read_id INTEGER DEFAULT 0,
+        PRIMARY KEY (nickname, group_name)
+    )""")
 
     try:
         c.execute("ALTER TABLE messages ADD COLUMN read INTEGER DEFAULT 0")
@@ -272,3 +278,32 @@ def get_recent_messages(nickname):
     rows = c.fetchall()
     conn.close()
     return rows
+
+def get_group_unread_count(nickname):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute('''
+        SELECT group_name, COUNT(*) FROM group_messages
+        WHERE sender != ?
+        AND id > COALESCE((
+            SELECT last_read_id FROM group_read
+            WHERE nickname = ? AND group_name = group_messages.group_name
+        ), 0)
+        GROUP BY group_name
+    ''', (nickname, nickname))
+    result = {row[0]: row[1] for row in c.fetchall()}
+    conn.close()
+    return result
+
+def mark_group_read(nickname, group_name):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute('SELECT MAX(id) FROM group_messages WHERE group_name = ?', (group_name,))
+    last_id = c.fetchone()[0] or 0
+    c.execute('''
+        INSERT INTO group_read (nickname, group_name, last_read_id)
+        VALUES (?, ?, ?)
+        ON CONFLICT(nickname, group_name) DO UPDATE SET last_read_id = ?
+    ''', (nickname, group_name, last_id, last_id))
+    conn.commit()
+    conn.close()

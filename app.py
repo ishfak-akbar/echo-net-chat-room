@@ -475,6 +475,21 @@ def handle_get_bans():
     if tcp:
         tcp.send('BANLIST\n'.encode('ascii'))
 
+@socketio.on('get_group_unread')
+def handle_group_unread():
+    sid = request.sid
+    nick = nick_map.get(sid)
+    if nick:
+        counts = db.get_group_unread_count(nick)
+        emit('group_unread_counts', {'counts': counts}, to=sid)
+
+@socketio.on('mark_group_read')
+def handle_mark_group_read(data):
+    sid = request.sid
+    nick = nick_map.get(sid)
+    group = data.get('group')
+    if nick and group:
+        db.mark_group_read(nick, group)
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5000)

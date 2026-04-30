@@ -819,6 +819,7 @@
       let allUsersList = [];
       let unreadCounts = {};
       let myGroups = {};
+      let groupUnreadCounts = {};
 
       const dpCache = {};
 
@@ -941,6 +942,11 @@
         renderUserList("all-user-list", allUsersList);
       });
 
+      socket.on("group_unread_counts", ({ counts }) => {
+        groupUnreadCounts = counts || {};
+        renderGroupList();
+      });
+
       function renderUserList(listId, users) {
         const container = document.getElementById(listId);
 
@@ -1001,10 +1007,12 @@
           const div = document.createElement("div");
           div.className = "group-item user-item";
           div.id = `group-${gname}`;
+          const gunread = groupUnreadCounts[gname] || 0;
           div.innerHTML = `
-          <div class="avatar" style="background:#3b82f6">G</div>
-          <div class="user-info"><div class="user-name">${gname}</div></div>
-        `;
+            <div class="avatar" style="background:#3b82f6">G</div>
+            <div class="user-info"><div class="user-name">${gname}</div></div>
+            ${gunread ? `<span class="unread-badge">${gunread}</span>` : ""}
+          `;
           div.onclick = () => openGroup(gname);
           container.appendChild(div);
         });
@@ -1109,6 +1117,10 @@
 
         socket.emit("mark_read", { target: user });
         unreadCounts[user] = 0;
+        const badge = document.querySelector(
+          `#user-list-${user} .unread-badge, #all-user-list-${user} .unread-badge`,
+        );
+        if (badge) badge.remove();
 
         setActiveNone();
         const activeEl =
@@ -1213,6 +1225,10 @@
         document.querySelector(".send-btn").disabled = false;
 
         socket.emit("load_group_history", { group: gname });
+        groupUnreadCounts[gname] = 0;
+        socket.emit("mark_group_read", { group: gname });
+        const gbadge = document.querySelector(`#group-${gname} .unread-badge`);
+        if (gbadge) gbadge.remove();
         refreshCurrentChat();
       }
 
@@ -1401,6 +1417,7 @@
       setInterval(() => {
         socket.emit("get_users");
         socket.emit("get_unread");
+        socket.emit("get_group_unread");
       }, 5000);
 
       showOnline();
