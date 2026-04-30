@@ -425,23 +425,19 @@
       .input-row {
         padding: 12px 20px;
       }
-      .list-container::-webkit-scrollbar {
+      .list-container::-webkit-scrollbar,
+      #member-list::-webkit-scrollbar,
+      #messages::-webkit-scrollbar {
         width: 3px;
       }
-      .list-container::-webkit-scrollbar-track {
+      .list-container::-webkit-scrollbar-track,
+      #member-list::-webkit-scrollbar-track,
+      #messages::-webkit-scrollbar-track {
         background: transparent;
       }
-      .list-container::-webkit-scrollbar-thumb {
-        background: var(--border);
-        border-radius: 9999px;
-      }
-      #member-list::-webkit-scrollbar {
-        width: 3px;
-      }
-      #member-list::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      #member-list::-webkit-scrollbar-thumb {
+      .list-container::-webkit-scrollbar-thumb,
+      #member-list::-webkit-scrollbar-thumb,
+      #messages::-webkit-scrollbar-thumb {
         background: var(--border);
         border-radius: 9999px;
       }
@@ -824,6 +820,8 @@
       let unreadCounts = {};
       let myGroups = {};
 
+      const dpCache = {};
+
       socket.on("online_users", ({ users }) => {
         onlineUsersList = users.filter((u) => u && u !== ME);
         if (document.getElementById("user-list").style.display !== "none") {
@@ -945,29 +943,56 @@
 
       function renderUserList(listId, users) {
         const container = document.getElementById(listId);
-        container.innerHTML = "";
+
+        container.querySelectorAll(".user-item").forEach((el) => {
+          const u = el.id.replace(`${listId}-`, "");
+          if (!users.includes(u)) el.remove();
+        });
 
         users.forEach((u) => {
           const unread = unreadCounts[u] || 0;
           const last = conversations[u]?.slice(-1)[0] || {};
+          const avatarId = `avatar-${listId}-${u}`;
+          const existing = document.getElementById(`${listId}-${u}`);
+
+          if (existing) {
+            const lastMsgEl = existing.querySelector(".last-msg");
+            if (lastMsgEl)
+              lastMsgEl.textContent = last.msg || "No messages yet";
+            const badge = existing.querySelector(".unread-badge");
+            if (unread) {
+              if (badge) badge.textContent = unread;
+              else
+                existing.insertAdjacentHTML(
+                  "beforeend",
+                  `<span class="unread-badge">${unread}</span>`,
+                );
+            } else {
+              if (badge) badge.remove();
+            }
+            return;
+          }
+          const avatarContent =
+            dpCache[u] && dpCache[u] !== "none"
+              ? `<img src="${dpCache[u]}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
+              : u[0].toUpperCase();
 
           const div = document.createElement("div");
           div.className = "user-item";
           div.id = `${listId}-${u}`;
-          const avatarId = `avatar-${listId}-${u}`;
           div.innerHTML = `
-          <div class="avatar" id="${avatarId}">${u[0].toUpperCase()}</div>
+          <div class="avatar" id="${avatarId}">${avatarContent}</div>
           <div class="user-info">
             <div class="user-name">${u}</div>
             <div class="last-msg">${last.msg || "No messages yet"}</div>
           </div>
           ${unread ? `<span class="unread-badge">${unread}</span>` : ""}`;
-          loadDP(u, avatarId);
+
+          if (!dpCache[u]) loadDP(u, avatarId);
           div.onclick = () => openDM(u);
           container.appendChild(div);
         });
       }
-
       function renderGroupList() {
         const container = document.getElementById("group-list");
         container.innerHTML = "";
@@ -1130,10 +1155,16 @@
         setActiveNone();
         document.getElementById("global-btn").classList.add("active");
 
-        document.getElementById("chat-title").innerHTML =
-          `🌐 <span style="color:#67e8e0">Global Chat</span>`;
+        document.getElementById("chat-title").innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="avatar" style="width:42px;height:42px;font-size:18px;overflow:hidden;">
+            <i class="fa-solid fa-earth-americas"></i>
+          </div>
+          <div style="font-weight:600;color:#67e8e0;">Global Chat</div>
+        </div>`;
 
-        document.getElementById("right-avatar").textContent = "🌐";
+        document.getElementById("right-avatar").innerHTML =
+          `<i class="fa-solid fa-earth-americas" style="font-size:36px;color:white;"></i>`;
         document.getElementById("right-name").textContent = "Global Chat";
         document.getElementById("right-status").textContent = "Everyone";
 
