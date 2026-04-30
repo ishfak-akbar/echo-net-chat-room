@@ -392,6 +392,9 @@ def load_chat(data):
     if user and target:
         history = db.get_dm_history(user, target)
         socketio.emit('chat_history', {'msgs': history}, to=sid)
+        db.mark_dm_as_read(user, target)
+        if target in nick_to_sid:
+            socketio.emit('read_receipt', {'sender': user}, to=nick_to_sid[target])
 
 
 @socketio.on('load_group_history')

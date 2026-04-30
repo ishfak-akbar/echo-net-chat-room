@@ -863,6 +863,16 @@
           read: false,
         });
         updateChatPreview(sender, msg, time);
+
+        if (mode === "dm" && dmTarget === sender) {
+          socket.emit("mark_read", { target: sender });
+          unreadCounts[sender] = 0;
+          const badge = document.querySelector(
+            `#user-list-${sender} .unread-badge, #all-user-list-${sender} .unread-badge`,
+          );
+          if (badge) badge.remove();
+        }
+
         if (mode === "dm" && dmTarget === sender)
           renderMsg({ sender, msg, time, mine: false });
       });
@@ -888,12 +898,12 @@
 
       socket.on("chat_history", ({ msgs }) => {
         if (!dmTarget) return;
-        conversations[dmTarget] = msgs.map(([s, r, msg, time]) => ({
+        conversations[dmTarget] = msgs.map(([s, r, msg, time, read]) => ({
           sender: s,
           msg,
           time,
           mine: s === ME,
-          read: s === ME,
+          read: !!read,
         }));
         if (mode === "dm" && dmTarget) refreshCurrentChat();
       });
