@@ -467,8 +467,12 @@
 
     <script>
       const socket = io();
-      let actions = 0;
-      let broadcasts = 0;
+      let actions = parseInt(localStorage.getItem("admin_actions") || "0");
+      let broadcasts = parseInt(
+        localStorage.getItem("admin_broadcasts") || "0",
+      );
+      document.getElementById("s-actions").textContent = actions;
+      document.getElementById("s-bc").textContent = broadcasts;
 
       socket.on("online_users", ({ users }) => {
         const list = document.getElementById("admin-users");
@@ -557,6 +561,7 @@
         if (!confirm(`Kick ${name} from the chat?`)) return;
         socket.emit("kick_user", { target: name });
         actions++;
+        localStorage.setItem("admin_actions", actions);
         document.getElementById("s-actions").textContent = actions;
         log(`⚠️ Kicked ${name}`);
         const li = document.getElementById(`auser-${name}`);
@@ -574,6 +579,7 @@
         if (!confirm(`Permanently ban ${name}?`)) return;
         socket.emit("ban_user", { target: name });
         actions++;
+        localStorage.setItem("admin_actions", actions);
         document.getElementById("s-actions").textContent = actions;
         log(`🚫 Banned ${name}`);
         const li = document.getElementById(`auser-${name}`);
@@ -592,6 +598,7 @@
         if (!confirm(`Unban ${name}?`)) return;
         socket.emit("unban_user", { target: name });
         actions++;
+        localStorage.setItem("admin_actions", actions);
         document.getElementById("s-actions").textContent = actions;
       }
 
@@ -601,6 +608,7 @@
         socket.emit("broadcast_msg", { msg });
         document.getElementById("bc-msg").value = "";
         broadcasts++;
+        localStorage.setItem('admin_broadcasts', broadcasts);
         document.getElementById("s-bc").textContent = broadcasts;
         log(`📢 Broadcast: ${msg}`);
       }
