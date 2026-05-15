@@ -77,6 +77,16 @@ def init_db():
         c.execute("ALTER TABLE messages ADD COLUMN read_at TEXT")
     except:
         pass
+    
+    try:
+        c.execute("ALTER TABLE messages ADD COLUMN image_url TEXT")
+    except:
+        pass
+
+    try:
+        c.execute("ALTER TABLE group_messages ADD COLUMN image_url TEXT")
+    except:
+        pass
 
     conn.commit()
     conn.close()
@@ -186,7 +196,7 @@ def save_group_message(group_name, sender, message):
 def get_group_history(group_name):
     conn = get_conn()
     c = conn.cursor()
-    c.execute("SELECT sender, message, time FROM group_messages WHERE group_name=? ORDER BY id ASC", (group_name,))
+    c.execute("SELECT sender, message, time, image_url FROM group_messages WHERE group_name=? ORDER BY id ASC", (group_name,))
     result = c.fetchall()
     conn.close()
     return result
@@ -213,7 +223,7 @@ def save_global(sender, msg):
 def get_dm_history(user1, user2):
     conn = get_conn()
     c = conn.cursor()
-    c.execute("""SELECT sender, receiver, message, time, read 
+    c.execute("""SELECT sender, receiver, message, time, read, image_url 
                  FROM messages 
                  WHERE (sender=? AND receiver=?)
                  OR (sender=? AND receiver=?)
@@ -328,3 +338,20 @@ def get_broadcasts():
     result = c.fetchall()
     conn.close()
     return result
+
+def save_dm_image(sender, receiver, image_url, caption=""):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("""INSERT INTO messages(sender, receiver, message, type, time, read, image_url)
+                 VALUES (?, ?, ?, 'dm', ?, 0, ?)""",
+              (sender, receiver, caption, now(), image_url))
+    conn.commit()
+    conn.close()
+
+def save_group_image(group_name, sender, image_url, caption=""):
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("INSERT INTO group_messages (group_name, sender, message, time, image_url) VALUES (?, ?, ?, ?, ?)",
+              (group_name, sender, caption, now(), image_url))
+    conn.commit()
+    conn.close()

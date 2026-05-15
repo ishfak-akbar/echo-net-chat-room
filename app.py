@@ -7,12 +7,17 @@ from werkzeug.utils import secure_filename
 import database as db
 from datetime import datetime
 from flask_socketio import disconnect
+import uuid
 
 app = Flask(__name__)
 app.secret_key = 'tcpchatroom_secret_key'
 
 UPLOAD_FOLDER = os.path.join('static', 'dp')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+MSG_IMG_FOLDER = os.path.join('static', 'uploads', 'msg_images')
+os.makedirs(MSG_IMG_FOLDER, exist_ok=True)
+app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024  
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
@@ -218,6 +223,19 @@ def get_dp(nickname):
             return {'url': url_for('static', filename=f'dp/{nickname}.{ext}')}, 200
     return {'url': None}, 200
 
+@app.route('/upload_msg_img', methods=['POST'])
+def upload_msg_img():
+    if 'nickname' not in session:
+        return {'error': 'not logged in'}, 401
+    file = request.files.get('img')
+    if not file:
+        return {'error': 'no file'}, 400
+    ext = file.filename.rsplit('.', 1)[-1].lower()
+    if ext not in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
+        return {'error': 'invalid type'}, 400
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    file.save(os.path.join(MSG_IMG_FOLDER, filename))
+    return {'url': url_for('static', filename=f'uploads/msg_images/{filename}')}, 200
 
 @socketio.on('connect')
 def on_connect():
@@ -359,8 +377,23 @@ def handle_dm(data):
     tcp    = get_tcp(sid)
     target = data.get('target', '')
     msg    = data.get('msg', '').strip()
-    if target and msg and tcp:
-        tcp.send(f'DM {target} {msg}\n'.encode('ascii'))
+    image_url = data.get('image_url')
+
+    if not target:
+        return
+
+    time = datetime.now().strftime('[%I:%M %p]')
+
+    if image_url:
+        sender = nick_map.get(sid)
+        db.save_dm_image(sender, target, image_url, msg)
+        target_sid = nick_to_sid.get(target)
+        if target_sid:
+            socketio.emit('dm', {'sender': sender, 'msg': msg, 'image_url': image_url, 'time': time}, to=target_sid)
+        socketio.emit('dm_sent', {'target': target, 'msg': msg, 'image_url': image_url, 'time': time}, to=sid)
+    else:
+        if msg and tcp:
+            tcp.send(f'DM {target} {msg}\n'.encode('ascii'))
         
 @socketio.on('mark_read')
 def handle_mark_read(data):
@@ -514,8 +547,27 @@ def handle_gmsg(data):
     tcp        = get_tcp(sid)
     group_name = data.get('group', '')
     msg        = data.get('msg', '').strip()
-    if group_name and msg and tcp:
-        tcp.send(f'GMSG {group_name} {msg}\n'.encode('ascii'))
+    image_url  = data.get('image_url')
+
+    if not group_name:
+        return
+
+    time   = datetime.now().strftime('[%I:%M %p]')
+    sender = nick_map.get(sid)
+
+    if image_url:
+        db.save_group_image(group_name, sender, image_url, msg)
+        members = db.get_user_groups(sender).get(group_name, [])
+        for member in members:
+            member_sid = nick_to_sid.get(member)
+            if member_sid:
+                socketio.emit('gmsg', {
+                    'group': group_name, 'sender': sender,
+                    'msg': msg, 'image_url': image_url, 'time': time
+                }, to=member_sid)
+    else:
+        if msg and tcp:
+            tcp.send(f'GMSG {group_name} {msg}\n'.encode('ascii'))
 
 @socketio.on('unban_user')
 def handle_unban(data):

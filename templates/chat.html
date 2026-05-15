@@ -454,6 +454,98 @@
         max-width: 100%;
         padding: 8px 18px;
       }
+
+      .attach-btn {
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+        background: #1e2f3a;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        color: var(--muted);
+        font-size: 17px;
+        cursor: pointer;
+        transition: 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .attach-btn:hover {
+        background: rgba(20, 184, 166, 0.18);
+        color: var(--accent-end);
+        border-color: var(--accent-end);
+      }
+
+      #img-preview-bar {
+        display: none;
+        padding: 8px 20px;
+        border-top: 1px solid var(--border);
+        background: #0f1d26;
+        align-items: center;
+        gap: 12px;
+      }
+      #img-preview-bar img {
+        width: 64px;
+        height: 64px;
+        object-fit: cover;
+        border-radius: 10px;
+      }
+      #img-preview-bar .cancel-img {
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 18px;
+        margin-left: auto;
+        padding: 4px 8px;
+      }
+      #img-preview-bar .cancel-img:hover {
+        color: #ff6b6b;
+      }
+      .msg-img-bubble {
+        max-width: 260px;
+        padding: 3px;
+        border-radius: 16px;
+        overflow: hidden;
+        cursor: pointer;
+      }
+      .msg-img-bubble img {
+        width: 100%;
+        border-radius: 12px;
+        display: block;
+        max-height: 280px;
+        object-fit: cover;
+      }
+      #lightbox {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.92);
+        z-index: 999;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 16px;
+      }
+      #lightbox.show {
+        display: flex;
+      }
+      #lightbox img {
+        max-width: 90vw;
+        max-height: 85vh;
+        border-radius: 14px;
+        object-fit: contain;
+      }
+      #lightbox-close {
+        position: absolute;
+        top: 18px;
+        right: 24px;
+        color: white;
+        font-size: 28px;
+        cursor: pointer;
+        opacity: 0.7;
+      }
+      #lightbox-close:hover {
+        opacity: 1;
+      }
     </style>
   </head>
   <body>
@@ -742,8 +834,31 @@
       </div>
 
       <div id="messages" style="display: none"></div>
+      <div id="img-preview-bar">
+        <img id="img-preview-thumb" src="" alt="preview" />
+        <span style="font-size: 13px; color: var(--muted)">Ready to send</span>
+        <span class="cancel-img" onclick="cancelImageAttach()" title="Cancel"
+          >✕</span
+        >
+      </div>
 
       <div class="input-row" id="input-row" style="display: none">
+        <input
+          type="file"
+          id="img-attach-input"
+          accept="image/*"
+          style="display: none"
+          onchange="onImageSelected(this)"
+        />
+        <button
+          class="attach-btn"
+          id="attach-btn"
+          onclick="document.getElementById('img-attach-input').click()"
+          title="Send image"
+          disabled
+        >
+          <i class="fa-solid fa-image"></i>
+        </button>
         <input
           id="msg-input"
           type="text"
@@ -812,6 +927,13 @@
           No media shared yet
         </p>
       </div>
+    </div>
+
+    <div id="lightbox">
+      <span id="lightbox-close" onclick="closeLightbox()"
+        ><i class="fa-solid fa-xmark"></i
+      ></span>
+      <img id="lightbox-img" src="" alt="full image" />
     </div>
 
     <!-- Group Modal -->
@@ -892,6 +1014,8 @@
       let groupUnreadCounts = {};
 
       const dpCache = {};
+      let pendingImageFile = null;
+      let pendingImageData = null;
 
       socket.on("online_users", ({ users }) => {
         onlineUsersList = users.filter((u) => u && u !== ME);
@@ -922,21 +1046,20 @@
         if (mode === "dm" && dmTarget === sender) refreshCurrentChat();
       });
 
-      socket.on("dm", ({ sender, msg, time }) => {
+      socket.on("dm", ({ sender, msg, image_url, time }) => {
         if (sender === ME) return;
         if (!conversations[sender]) conversations[sender] = [];
         conversations[sender].push({
           sender,
           msg,
+          image_url: image_url || null,
           time,
           mine: false,
           read: false,
         });
-        updateChatPreview(sender, msg, time);
-        if (!(mode === "dm" && dmTarget === sender)) {
+        updateChatPreview(sender, msg, image_url);
+        if (!(mode === "dm" && dmTarget === sender))
           document.getElementById("dot-all").style.display = "inline-block";
-        }
-
         if (mode === "dm" && dmTarget === sender) {
           socket.emit("mark_read", { target: sender });
           unreadCounts[sender] = 0;
@@ -944,10 +1067,14 @@
             `#user-list-${sender} .unread-badge, #all-user-list-${sender} .unread-badge`,
           );
           if (badge) badge.remove();
+          renderMsg({
+            sender,
+            msg,
+            image_url: image_url || null,
+            time,
+            mine: false,
+          });
         }
-
-        if (mode === "dm" && dmTarget === sender)
-          renderMsg({ sender, msg, time, mine: false });
       });
 
       socket.on("dm_sent", ({ target, msg, time }) => {
@@ -961,43 +1088,60 @@
           renderMsg({ sender, msg, time, mine, isGlobal: true });
       });
 
-      socket.on("gmsg", ({ group, sender, msg, time }) => {
+      socket.on("gmsg", ({ group, sender, msg, image_url, time }) => {
         if (!groupConversations[group]) groupConversations[group] = [];
         const mine = sender === ME;
-        groupConversations[group].push({ sender, msg, time, mine });
-
+        groupConversations[group].push({
+          sender,
+          msg,
+          image_url: image_url || null,
+          time,
+          mine,
+        });
         if (mode === "group" && groupTarget === group) {
-          renderMsg({ sender, msg, time, mine, isGroup: true });
+          renderMsg({
+            sender,
+            msg,
+            image_url: image_url || null,
+            time,
+            mine,
+            isGroup: true,
+          });
           socket.emit("mark_group_read", { group });
           groupUnreadCounts[group] = 0;
           const badge = document.querySelector(`#group-${group} .unread-badge`);
           if (badge) badge.remove();
         }
-        if (!(mode === "group" && groupTarget === group)) {
+        if (!(mode === "group" && groupTarget === group))
           document.getElementById("dot-groups").style.display = "inline-block";
-        }
       });
 
       socket.on("chat_history", ({ msgs }) => {
         if (!dmTarget) return;
-        conversations[dmTarget] = msgs.map(([s, r, msg, time, read]) => ({
-          sender: s,
-          msg,
-          time,
-          mine: s === ME,
-          read: !!read,
-        }));
+        conversations[dmTarget] = msgs.map(
+          ([s, r, msg, time, read, image_url]) => ({
+            sender: s,
+            msg,
+            image_url: image_url || null,
+            time,
+            mine: s === ME,
+            read: !!read,
+          }),
+        );
         if (mode === "dm" && dmTarget) refreshCurrentChat();
       });
 
       socket.on("group_history", ({ msgs }) => {
         if (!groupTarget) return;
-        groupConversations[groupTarget] = msgs.map(([s, msg, time]) => ({
-          sender: s,
-          msg,
-          time,
-          mine: s === ME,
-        }));
+        groupConversations[groupTarget] = msgs.map(
+          ([s, msg, time, image_url]) => ({
+            sender: s,
+            msg,
+            image_url: image_url || null,
+            time,
+            mine: s === ME,
+          }),
+        );
         if (mode === "group" && groupTarget) refreshCurrentChat();
       });
 
@@ -1023,13 +1167,16 @@
       });
 
       socket.on("offline_dm_history", ({ sender, msgs }) => {
-        conversations[sender] = msgs.map(([s, r, msg, time, read]) => ({
-          sender: s,
-          msg,
-          time,
-          mine: s === ME,
-          read: !!read,
-        }));
+        conversations[sender] = msgs.map(
+          ([s, r, msg, time, read, image_url]) => ({
+            sender: s,
+            msg,
+            image_url: image_url || null,
+            time,
+            mine: s === ME,
+            read: !!read,
+          }),
+        );
         renderUserList("user-list", onlineUsersList);
         renderUserList("all-user-list", allUsersList);
       });
@@ -1075,7 +1222,9 @@
           if (existing) {
             const lastMsgEl = existing.querySelector(".last-msg");
             if (lastMsgEl)
-              lastMsgEl.textContent = last.msg || "No messages yet";
+              lastMsgEl.innerHTML = last.image_url
+                ? `<i class="fa-solid fa-image" style="font-size:11px;opacity:.8"></i> Photo`
+                : last.msg || "No messages yet";
             const badge = existing.querySelector(".unread-badge");
             if (unread) {
               if (badge) badge.textContent = unread;
@@ -1101,7 +1250,11 @@
           <div class="avatar" id="${avatarId}">${avatarContent}</div>
           <div class="user-info">
             <div class="user-name">${u}</div>
-            <div class="last-msg">${last.msg || "No messages yet"}</div>
+            <div class="last-msg">${
+              last.image_url
+                ? `<i class="fa-solid fa-image" style="font-size:11px;opacity:.8"></i> Photo`
+                : last.msg || "No messages yet"
+            }</div>
           </div>
           ${unread ? `<span class="unread-badge">${unread}</span>` : ""}`;
 
@@ -1165,6 +1318,7 @@
       function renderMsg({
         sender,
         msg,
+        image_url,
         time,
         mine,
         isGlobal = false,
@@ -1173,7 +1327,7 @@
       }) {
         const box = document.getElementById("messages");
         const wrap = document.createElement("div");
-        wrap.style.cssText = `display:flex;flex-direction:column;align-items:${mine ? "flex-end" : "flex-start"}; margin:4px 0;`;
+        wrap.style.cssText = `display:flex;flex-direction:column;align-items:${mine ? "flex-end" : "flex-start"};margin:4px 0;`;
 
         if ((isGlobal || isGroup) && !mine) {
           const s = document.createElement("div");
@@ -1182,35 +1336,51 @@
           wrap.appendChild(s);
         }
 
-        const bubble = document.createElement("div");
-        let cls = mine ? "msg-sent" : "msg-recv";
-        if (isGlobal) cls = mine ? "msg-global-mine" : "msg-global";
-        bubble.className = `msg ${cls}`;
-        bubble.textContent = msg;
+        if (image_url) {
+          const bubble = document.createElement("div");
+          bubble.className = `msg-img-bubble ${mine ? "msg-sent" : "msg-recv"}`;
+          bubble.innerHTML = `<img src="${image_url}" alt="image" loading="lazy" />`;
+          bubble.querySelector("img").onclick = () => openLightbox(image_url);
+          wrap.appendChild(bubble);
+          if (msg) {
+            const caption = document.createElement("div");
+            caption.className = `msg ${mine ? "msg-sent" : "msg-recv"}`;
+            caption.textContent = msg;
+            caption.style.marginTop = "4px";
+            wrap.appendChild(caption);
+          }
+        } else {
+          const bubble = document.createElement("div");
+          let cls = mine ? "msg-sent" : "msg-recv";
+          if (isGlobal) cls = mine ? "msg-global-mine" : "msg-global";
+          bubble.className = `msg ${cls}`;
+          bubble.textContent = msg;
+          wrap.appendChild(bubble);
+        }
 
         const footer = document.createElement("div");
         footer.className = "msg-footer";
         footer.innerHTML = (time || "").replace(/[\[\]()]/g, "");
-
-        if (mine && !isGlobal && !isGroup) {
+        if (mine && !isGlobal && !isGroup)
           footer.innerHTML += ` <span style="color:${read ? "#4fc8ff" : "var(--muted)"}">${read ? "✓✓" : "✓"}</span>`;
-        }
 
-        wrap.appendChild(bubble);
         wrap.appendChild(footer);
         box.appendChild(wrap);
         box.scrollTop = box.scrollHeight;
       }
 
-      function updateChatPreview(user, msg, time) {
+      function updateChatPreview(user, msg, image_url) {
         const el =
           document.getElementById(`user-list-${user}`) ||
           document.getElementById(`all-user-list-${user}`);
-        if (el) {
-          const lastMsgEl = el.querySelector(".last-msg");
-          if (lastMsgEl)
-            lastMsgEl.textContent =
-              msg.length > 35 ? msg.substring(0, 35) + "..." : msg;
+        if (!el) return;
+        const lastMsgEl = el.querySelector(".last-msg");
+        if (!lastMsgEl) return;
+        if (image_url) {
+          lastMsgEl.innerHTML = `<i class="fa-solid fa-image" style="font-size:11px;opacity:.8"></i> Photo`;
+        } else {
+          lastMsgEl.textContent =
+            msg && msg.length > 35 ? msg.substring(0, 35) + "..." : msg || "";
         }
       }
 
@@ -1268,6 +1438,7 @@
         document.querySelector(".send-btn").style.display = "";
         input.placeholder = `Message ${user}...`;
         document.querySelector(".send-btn").disabled = false;
+        document.getElementById("attach-btn").disabled = false;
 
         socket.emit("load_chat", { target: user });
         refreshCurrentChat();
@@ -1350,6 +1521,7 @@
         document.querySelector(".send-btn").style.display = "";
         input.placeholder = `Message #${gname}...`;
         document.querySelector(".send-btn").disabled = false;
+        document.getElementById("attach-btn").disabled = false;
 
         socket.emit("load_group_history", { group: gname });
         groupUnreadCounts[gname] = 0;
@@ -1365,10 +1537,73 @@
           document.getElementById("dot-groups").style.display = "none";
       }
 
+      function onImageSelected(input) {
+        const file = input.files[0];
+        if (!file) return;
+        pendingImageFile = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          pendingImageData = e.target.result;
+          document.getElementById("img-preview-thumb").src = pendingImageData;
+          document.getElementById("img-preview-bar").style.display = "flex";
+          document.getElementById("msg-input").placeholder =
+            "Add a caption (optional)...";
+        };
+        reader.readAsDataURL(file);
+        input.value = "";
+      }
+
+      function cancelImageAttach() {
+        pendingImageFile = null;
+        pendingImageData = null;
+        document.getElementById("img-preview-bar").style.display = "none";
+        document.getElementById("img-preview-thumb").src = "";
+        document.getElementById("msg-input").placeholder = currentPlaceholder();
+      }
+
+      function currentPlaceholder() {
+        if (mode === "dm" && dmTarget) return `Message ${dmTarget}...`;
+        if (mode === "group" && groupTarget)
+          return `Message #${groupTarget}...`;
+        if (mode === "global") return "Message everyone...";
+        return "Type a message...";
+      }
+
+      function uploadImageThen(dataUrl, file, cb) {
+        const formData = new FormData();
+        formData.append("img", file || dataURLtoFile(dataUrl, "image.jpg"));
+        fetch("/upload_msg_img", { method: "POST", body: formData })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.url) cb(data.url);
+          })
+          .catch(() => alert("Image upload failed."));
+      }
+
+      function dataURLtoFile(dataUrl, filename) {
+        const arr = dataUrl.split(",");
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) u8arr[n] = bstr.charCodeAt(n);
+        return new File([u8arr], filename, { type: mime });
+      }
+
+      function openLightbox(url) {
+        document.getElementById("lightbox-img").src = url;
+        document.getElementById("lightbox").classList.add("show");
+      }
+
+      function closeLightbox() {
+        document.getElementById("lightbox").classList.remove("show");
+        document.getElementById("lightbox-img").src = "";
+      }
+
       function sendMsg() {
         const input = document.getElementById("msg-input");
         const msg = input.value.trim();
-        if (!msg) return;
+        if (!msg && !pendingImageData) return;
         if (mode === "broadcast") return;
 
         const time = new Date().toLocaleTimeString([], {
@@ -1377,23 +1612,52 @@
         });
 
         if (mode === "dm" && dmTarget) {
-          if (!conversations[dmTarget]) conversations[dmTarget] = [];
-          conversations[dmTarget].push({
-            sender: ME,
-            msg,
-            time,
-            mine: true,
-            read: false,
-          });
-          renderMsg({ msg, time, mine: true, read: false });
-          socket.emit("send_dm", { target: dmTarget, msg });
+          if (pendingImageData) {
+            uploadImageThen(pendingImageData, pendingImageFile, (image_url) => {
+              if (!conversations[dmTarget]) conversations[dmTarget] = [];
+              conversations[dmTarget].push({
+                sender: ME,
+                msg,
+                image_url,
+                time,
+                mine: true,
+                read: false,
+              });
+              renderMsg({ msg, image_url, time, mine: true, read: false });
+              socket.emit("send_dm", { target: dmTarget, msg, image_url });
+              updateChatPreview(dmTarget, msg, image_url);
+            });
+          } else {
+            if (!conversations[dmTarget]) conversations[dmTarget] = [];
+            conversations[dmTarget].push({
+              sender: ME,
+              msg,
+              image_url: null,
+              time,
+              mine: true,
+              read: false,
+            });
+            renderMsg({ msg, image_url: null, time, mine: true, read: false });
+            socket.emit("send_dm", { target: dmTarget, msg, image_url: null });
+          }
         } else if (mode === "global") {
           socket.emit("send_global", { msg });
         } else if (mode === "group" && groupTarget) {
-          socket.emit("send_gmsg", { group: groupTarget, msg });
+          if (pendingImageData) {
+            uploadImageThen(pendingImageData, pendingImageFile, (image_url) => {
+              socket.emit("send_gmsg", { group: groupTarget, msg, image_url });
+            });
+          } else {
+            socket.emit("send_gmsg", {
+              group: groupTarget,
+              msg,
+              image_url: null,
+            });
+          }
         }
 
         input.value = "";
+        cancelImageAttach();
       }
 
       function showOnline() {
@@ -1596,7 +1860,9 @@
       }
 
       loadDP("{{ nickname }}", "my-avatar");
-
+      document.getElementById("lightbox").addEventListener("click", (e) => {
+        if (e.target === document.getElementById("lightbox")) closeLightbox();
+      });
       document.getElementById("msg-input").addEventListener("keydown", (e) => {
         if (e.key === "Enter") sendMsg();
       });
