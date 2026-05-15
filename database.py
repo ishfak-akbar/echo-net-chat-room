@@ -355,3 +355,19 @@ def save_group_image(group_name, sender, image_url, caption=""):
               (group_name, sender, caption, now(), image_url))
     conn.commit()
     conn.close()
+    
+def get_shared_media(user1, user2=None, group_name=None):
+    conn = get_conn()
+    c = conn.cursor()
+    if group_name:
+        c.execute("""SELECT sender, image_url, time FROM group_messages
+                     WHERE group_name=? AND image_url IS NOT NULL AND image_url != ''
+                     ORDER BY id DESC""", (group_name,))
+    else:
+        c.execute("""SELECT sender, image_url, time FROM messages
+                     WHERE ((sender=? AND receiver=?) OR (sender=? AND receiver=?))
+                     AND image_url IS NOT NULL AND image_url != ''
+                     ORDER BY id DESC""", (user1, user2, user2, user1))
+    result = c.fetchall()
+    conn.close()
+    return result

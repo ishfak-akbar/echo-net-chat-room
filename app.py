@@ -609,5 +609,19 @@ def handle_mark_group_read(data):
     if nick and group:
         db.mark_group_read(nick, group)
 
+@socketio.on('get_shared_media')
+def handle_get_shared_media(data):
+    sid = request.sid
+    me = nick_map.get(sid)
+    target = data.get('target')
+    group = data.get('group')
+    if group:
+        media = db.get_shared_media(group_name=group)
+    elif target:
+        media = db.get_shared_media(me, target)
+    else:
+        return
+    emit('shared_media', {'media': [list(r) for r in media]}, to=sid)
+
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5000)
