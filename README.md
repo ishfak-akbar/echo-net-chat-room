@@ -178,9 +178,17 @@ The SQLite database (`echonet.db`) is auto-created on first run. It stores:
 
 ## 📸 Screenshots
 
-| Login Page | Chat Page | Admin Page | Broadcast | Create Group |
-|-------------------|------------|-------------|-------------------|------------|
-| ![Login Page](screenshots/login.png) | ![ChatPage](screenshots/chat.png) | ![Post Page](screenshots/admin.png) | ![Dashboard Page](screenshots/broadcast.png) | ![Create Post Page](screenshots/group.png) |
+| Login Page | Start Page | Chat Page | 
+|-------------------|------------|-------------|
+| ![Login Page](screenshots/login.png) | ![ChatPage](screenshots/start.png) | ![ChatPage](screenshots/chat.png) | 
+
+| Admin Page | Broadcast | Admin Page |
+|-------------------|------------|-------------|
+| ![Post Page](screenshots/admin.png) | ![Dashboard Page](screenshots/broadcast.png) | ![Dashboard Page](screenshots/admin2.png) |
+
+| GroupCreate | Group Chat | Global Chat 
+|----------------|------------|-------------|
+| ![Login Page](screenshots/groupCreate.png) | ![ChatPage](screenshots/groupChat.png) | ![Post Page](screenshots/globalChat.png) |
 
 ---
 
