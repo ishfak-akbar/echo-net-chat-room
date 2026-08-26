@@ -1,10 +1,11 @@
 from datetime import datetime, timezone
+from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.models.mixins import TimestampMixin
 
 
-class User(db.Model, TimestampMixin):
+class User(db.Model, UserMixin, TimestampMixin):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)

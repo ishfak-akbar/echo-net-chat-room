@@ -7,3 +7,7 @@ eventlet==0.36.1
 python-dotenv==1.0.1
 Werkzeug==3.0.3
 email-validator==2.2.0
+Flask-Login==0.6.3
+click~=8.3.1
+alembic~=1.19.1
+SQLAlchemy~=2.0.52
