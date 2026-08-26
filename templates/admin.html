@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel — EchoNet</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <style>
+      :root {
+        --bg: #0a1218;
+        --card: #132129;
+        --border: #23404f;
+        --text: #e0f2f1;
+        --muted: #94c4c0;
+        --accent-start: #0f766e;
+        --accent-end: #14b8a6;
+        --online: #34d399;
+        --danger: #f87171;
+        --warn: #fbbf24;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Poppins", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+        padding: 14px 28px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .logo-box {
+        width: 38px;
+        height: 38px;
+        background: linear-gradient(
+          135deg,
+          var(--accent-start),
+          var(--accent-end)
+        );
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: white;
+        box-shadow:
+          0 0 10px rgba(20, 184, 166, 0.6),
+          0 0 20px rgba(20, 184, 166, 0.3);
+      }
+
+      .header h1 {
+        font-size: 20px;
+        font-weight: 700;
+      }
+      .header h1 span {
+        color: var(--accent-end);
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .badge-admin {
+        background: rgba(20, 184, 166, 0.15);
+        border: 1px solid var(--accent-end);
+        color: var(--accent-end);
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 9999px;
+      }
+
+      .logout-btn {
+        background: rgba(248, 113, 113, 0.1);
+        border: 1px solid rgba(248, 113, 113, 0.3);
+        color: var(--danger);
+        padding: 6px 16px;
+        border-radius: 9999px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        transition: 0.2s;
+      }
+      .logout-btn:hover {
+        background: rgba(248, 113, 113, 0.2);
+      }
+
+      .wrap {
+        max-width: 1000px;
+        margin: 24px auto;
+        padding: 0 20px;
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+      }
+
+      .card {
+        background: var(--card);
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45);
+        padding: 22px;
+      }
+
+      .card-full {
+        grid-column: 1 / -1;
+      }
+
+      .card-title {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1.8px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .card-title i {
+        color: var(--accent-end);
+        font-size: 13px;
+      }
+
+      .user-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .user-list::-webkit-scrollbar {
+        width: 3px;
+      }
+      .user-list::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .user-list::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 9999px;
+      }
+
+      .user-list li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        background: rgba(20, 184, 166, 0.05);
+        border: 1px solid rgba(20, 184, 166, 0.1);
+        border-radius: 12px;
+        font-size: 14px;
+      }
+
+      .udot {
+        width: 7px;
+        height: 7px;
+        background: var(--online);
+        border-radius: 50%;
+        flex-shrink: 0;
+        box-shadow: 0 0 6px var(--online);
+      }
+
+      .bdot {
+        width: 7px;
+        height: 7px;
+        background: var(--danger);
+        border-radius: 50%;
+        flex-shrink: 0;
+        box-shadow: 0 0 6px var(--danger);
+      }
+
+      .actions {
+        margin-left: auto;
+        display: flex;
+        gap: 6px;
+      }
+
+      .bkick,
+      .bban,
+      .bunban {
+        border: none;
+        border-radius: 8px;
+        padding: 5px 11px;
+        font-family: "Poppins", sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .bkick {
+        background: rgba(251, 191, 36, 0.1);
+        color: var(--warn);
+        border: 1px solid rgba(251, 191, 36, 0.25);
+      }
+      .bban {
+        background: rgba(248, 113, 113, 0.1);
+        color: var(--danger);
+        border: 1px solid rgba(248, 113, 113, 0.25);
+      }
+      .bunban {
+        background: rgba(52, 211, 153, 0.1);
+        color: var(--online);
+        border: 1px solid rgba(52, 211, 153, 0.25);
+      }
+      .bkick:hover {
+        background: rgba(251, 191, 36, 0.2);
+      }
+      .bban:hover {
+        background: rgba(248, 113, 113, 0.2);
+      }
+      .bunban:hover {
+        background: rgba(52, 211, 153, 0.2);
+      }
+
+      .stats {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .stat {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: rgba(20, 184, 166, 0.05);
+        border: 1px solid rgba(20, 184, 166, 0.12);
+        border-radius: 12px;
+      }
+
+      .stat-label {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .stat-val {
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--accent-end);
+      }
+
+      #log {
+        background: #0a1218;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px;
+        height: 200px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 13px;
+      }
+
+      #log::-webkit-scrollbar {
+        width: 3px;
+      }
+      #log::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      #log::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 9999px;
+      }
+
+      .log-row {
+        display: flex;
+        gap: 10px;
+      }
+      .log-t {
+        color: var(--accent-end);
+        flex-shrink: 0;
+        font-size: 12px;
+      }
+      .log-m {
+        color: var(--muted);
+      }
+
+      /* Broadcast */
+      .bc-form {
+        display: flex;
+        gap: 10px;
+      }
+
+      textarea {
+        flex: 1;
+        background: #0a1218;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 16px;
+        color: var(--text);
+        font-family: "Poppins", sans-serif;
+        font-size: 14px;
+        resize: none;
+        height: 52px;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+      textarea:focus {
+        border-color: var(--accent-end);
+      }
+
+      .bc-btn {
+        background: linear-gradient(
+          135deg,
+          var(--accent-start),
+          var(--accent-end)
+        );
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 0 24px;
+        font-family: "Poppins", sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+        white-space: nowrap;
+      }
+      .bc-btn:hover {
+        opacity: 0.85;
+      }
+
+      .empty {
+        font-size: 13px;
+        color: var(--muted);
+        padding: 8px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-left">
+        <div class="logo-box">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="32"
+            height="32"
+            viewBox="0 0 28 28"
+            fill="none"
+            stroke="white"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="5" cy="17" r="1.5" fill="white" />
+            <path d="M8 13.5a5 5 0 0 1 0 7" />
+            <path d="M10 10.5a9 9 0 0 1 0 13" />
+            <circle cx="23" cy="11" r="1.5" fill="white" />
+            <path d="M20 7.5a5 5 0 0 0 0 7" />
+            <path d="M18 4.5a9 9 0 0 0 0 13" />
+          </svg>
+        </div>
+        <h1>Echo<span>Net</span> — Admin</h1>
+      </div>
+      <div class="header-right">
+        <span class="badge-admin"
+          ><i class="fa-solid fa-shield-halved"></i> Admin</span
+        >
+        <a href="/logout" class="logout-btn"
+          ><i class="fa-solid fa-right-from-bracket"></i> Logout</a
+        >
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="card card-full">
+        <div class="card-title">
+          <i class="fa-solid fa-bullhorn"></i> Broadcast to All
+        </div>
+        <div class="bc-form">
+          <textarea
+            id="bc-msg"
+            placeholder="Send a message to all users..."
+          ></textarea>
+          <button class="bc-btn" onclick="doBroadcast()">
+            <i class="fa-solid fa-paper-plane"></i> Send
+          </button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          <i class="fa-solid fa-circle-dot"></i> Online Users
+        </div>
+        <ul class="user-list" id="admin-users">
+          <li class="empty">Loading...</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <i class="fa-solid fa-chart-simple"></i> Stats
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-label">Online now</span>
+            <span class="stat-val" id="s-online">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Actions taken</span>
+            <span class="stat-val" id="s-actions">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Broadcasts sent</span>
+            <span class="stat-val" id="s-bc">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <i class="fa-solid fa-ban"></i> Banned Users
+        </div>
+        <ul class="user-list" id="ban-list">
+          <li class="empty">Loading...</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <i class="fa-solid fa-scroll"></i> Activity Log
+        </div>
+        <div id="log">
+          <div class="log-row">
+            <span class="log-t">--:--</span>
+            <span class="log-m">Waiting for activity...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const socket = io();
+
+      let actions = parseInt(localStorage.getItem("admin_actions") || "0");
+      document.getElementById("s-actions").textContent = actions;
+      socket.on("online_users", ({ users }) => {
+        const list = document.getElementById("admin-users");
+        const online = users.filter((u) => u && u !== "admin");
+        document.getElementById("s-online").textContent = online.length;
+        if (!online.length) {
+          list.innerHTML = '<li class="empty">No users online</li>';
+          return;
+        }
+        list.innerHTML = "";
+        online.forEach((u) => {
+          const li = document.createElement("li");
+          li.id = `auser-${u}`;
+          li.innerHTML = `
+            <span class="udot"></span>
+            <span style="font-weight:500">${u}</span>
+            <div class="actions">
+              <button class="bkick" onclick="doKick('${u}')">Kick</button>
+              <button class="bban" onclick="doBan('${u}')">Ban</button>
+            </div>`;
+          list.appendChild(li);
+        });
+      });
+
+      socket.on("global_msg", ({ sender, msg }) => {
+        if (sender !== "admin") log(`💬 ${sender}: ${msg}`);
+      });
+
+      socket.on("banlist", ({ bans }) => {
+        const list = document.getElementById("ban-list");
+        if (!bans.length) {
+          list.innerHTML = '<li class="empty">No banned users</li>';
+          return;
+        }
+        list.innerHTML = "";
+        bans.forEach((b) => {
+          const li = document.createElement("li");
+          li.id = `buser-${b}`;
+          li.innerHTML = `
+            <span class="bdot"></span>
+            <span style="font-weight:500">${b}</span>
+            <div class="actions">
+              <button class="bunban" onclick="doUnban('${b}')">Unban</button>
+            </div>`;
+          list.appendChild(li);
+        });
+      });
+
+      socket.on("unban_ok", ({ name }) => {
+        const li = document.getElementById(`buser-${name}`);
+        if (li) li.remove();
+        const list = document.getElementById("ban-list");
+        if (!list.children.length)
+          list.innerHTML = '<li class="empty">No banned users</li>';
+        log(`✅ Unbanned ${name}`);
+      });
+
+      socket.on("kicked", () => {
+        window.location.href = "/logout";
+      });
+      socket.on("load_broadcasts", ({ msgs }) => {
+        msgs.forEach(([msg, time]) => log(`📢 ${msg}`));
+      });
+
+      socket.on("broadcast_count", ({ count }) => {
+        document.getElementById("s-bc").textContent = count;
+      });
+      socket.on("connect", () => {
+        socket.emit("get_broadcast_count");
+      });
+      socket.emit("get_broadcast_count");
+
+      function log(text) {
+        const box = document.getElementById("log");
+        const placeholder = box.querySelector(".log-m");
+        if (
+          placeholder &&
+          placeholder.textContent === "Waiting for activity..."
+        ) {
+          box.innerHTML = "";
+        }
+        const now = new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const row = document.createElement("div");
+        row.className = "log-row";
+        row.innerHTML = `<span class="log-t">${now}</span><span class="log-m">${text}</span>`;
+        box.appendChild(row);
+        box.scrollTop = box.scrollHeight;
+      }
+
+      function doKick(name) {
+        if (!confirm(`Kick ${name} from the chat?`)) return;
+        socket.emit("kick_user", { target: name });
+        actions++;
+        localStorage.setItem("admin_actions", actions);
+        document.getElementById("s-actions").textContent = actions;
+        log(`⚠️ Kicked ${name}`);
+        const li = document.getElementById(`auser-${name}`);
+        if (li) li.remove();
+        const current = parseInt(
+          document.getElementById("s-online").textContent,
+        );
+        document.getElementById("s-online").textContent = Math.max(
+          0,
+          current - 1,
+        );
+      }
+
+      function doBan(name) {
+        if (!confirm(`Permanently ban ${name}?`)) return;
+        socket.emit("ban_user", { target: name });
+        actions++;
+        localStorage.setItem("admin_actions", actions);
+        document.getElementById("s-actions").textContent = actions;
+        log(`🚫 Banned ${name}`);
+        const li = document.getElementById(`auser-${name}`);
+        if (li) li.remove();
+        const current = parseInt(
+          document.getElementById("s-online").textContent,
+        );
+        document.getElementById("s-online").textContent = Math.max(
+          0,
+          current - 1,
+        );
+        socket.emit("get_bans");
+      }
+
+      function doUnban(name) {
+        if (!confirm(`Unban ${name}?`)) return;
+        socket.emit("unban_user", { target: name });
+        actions++;
+        localStorage.setItem("admin_actions", actions);
+        document.getElementById("s-actions").textContent = actions;
+      }
+
+      function doBroadcast() {
+        const msg = document.getElementById("bc-msg").value.trim();
+        if (!msg) return;
+        socket.emit("broadcast_msg", { msg });
+        document.getElementById("bc-msg").value = "";
+        document.getElementById("s-bc").textContent = broadcasts;
+        log(`📢 Broadcast: ${msg}`);
+      }
+
+      socket.emit("get_users");
+      socket.emit("get_bans");
+
+      setInterval(() => {
+        socket.emit("get_users");
+        socket.emit("get_bans");
+      }, 5000);
+    </script>
+  </body>
+</html>
