@@ -1,4 +1,14 @@
 __pycache__/
 *.pyc
-*.db
 .env
+*.db
+instance/
+static/dp/*
+!static/dp/.gitkeep
+static/uploads/*
+!static/uploads/.gitkeep
+.venv/
+venv/
+*.log
+.idea/
+*.iml
