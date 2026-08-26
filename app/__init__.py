@@ -21,4 +21,7 @@ def create_app():
     migrate.init_app(app, db)
     socketio.init_app(app)
 
+    with app.app_context():
+        from app import models
+
     return app
