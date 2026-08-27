@@ -36,6 +36,9 @@ def create_app():
         from app.auth import auth_bp
         app.register_blueprint(auth_bp)
 
+        from app.uploads import uploads_bp
+        app.register_blueprint(uploads_bp)
+
         from app.cli import create_admin
         app.cli.add_command(create_admin)
 
