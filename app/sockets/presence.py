@@ -5,6 +5,7 @@ from app.models.user import User
 from app.sockets.state import connection_counts
 
 PRESENCE_ROOM = "presence"
+GLOBAL_ROOM = "global"
 
 
 def _user_room(user_id: int) -> str:
@@ -18,6 +19,7 @@ def handle_connect():
 
     join_room(_user_room(current_user.id))
     join_room(PRESENCE_ROOM)
+    join_room(GLOBAL_ROOM)
 
     connection_counts[current_user.id] = connection_counts.get(current_user.id, 0) + 1
 
