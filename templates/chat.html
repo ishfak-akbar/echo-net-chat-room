@@ -38,6 +38,11 @@
 
     <div class="app-body">
       <aside class="sidebar">
+        <div id="global-chat-tab" class="global-chat-tab">
+          <i class="fa-solid fa-globe"></i>
+          <span>Global Chat</span>
+        </div>
+        <div class="sidebar-divider">Direct Messages</div>
         <div class="sidebar-search">
           <input type="text" id="user-search" placeholder="Search users...">
         </div>
@@ -46,11 +51,11 @@
         </div>
       </aside>
 
-      <main class="chat-main">
+      <main id="chat-main" class="chat-main">
         <div class="empty-chat-state">
           <i class="fa-solid fa-comments"></i>
           <p>Select a conversation to start chatting</p>
-          <span class="hint">Messaging arrives in the next step.</span>
+          <span class="hint">Choose Global Chat or a user from the sidebar.</span>
         </div>
       </main>
     </div>
@@ -66,5 +71,10 @@
   <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
   <script src="{{ url_for('static', filename='js/socket.js') }}"></script>
   <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/conversation.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/messages.js') }}"></script>
+  <script>
+    openGlobalChat();
+  </script>
 </body>
 </html>

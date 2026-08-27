@@ -38,6 +38,14 @@ function renderUserList() {
 
 searchInput.addEventListener("input", renderUserList);
 
+userListEl.addEventListener("click", (e) => {
+  const item = e.target.closest(".user-item");
+  if (!item) return;
+  const userId = parseInt(item.dataset.userId, 10);
+  const user = onlineUsers.find((u) => u.id === userId);
+  if (user) openDM(user.id, user.username, user.profile_pic);
+});
+
 logoutBtn.addEventListener("click", async () => {
   await fetch("/auth/logout", { method: "POST" });
   window.location.href = "/login";
