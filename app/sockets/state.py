@@ -1,11 +1,17 @@
-"""
-In-memory tracking of active socket connections per user, to support
-multiple simultaneous devices/tabs per account.
+user_sids: dict[int, set[str]] = {}
 
-NOTE: this only works correctly for a single-process deployment.
-If we later scale to multiple worker processes/machines, this needs
-to move to Redis so all workers share the same connection counts.
-Flagged here thus we don't forget when we get to the deployment step.
-"""
 
-connection_counts: dict[int, int] = {}
+def add_connection(user_id: int, sid: str) -> int:
+    """Registers a new sid for a user. Returns the active connection count."""
+    user_sids.setdefault(user_id, set()).add(sid)
+    return len(user_sids[user_id])
+
+
+def remove_connection(user_id: int, sid: str) -> int:
+    """Removes a sid for a user. Returns the remaining active connection count."""
+    sids = user_sids.get(user_id)
+    if sids:
+        sids.discard(sid)
+        if not sids:
+            user_sids.pop(user_id, None)
+    return len(user_sids.get(user_id, set()))

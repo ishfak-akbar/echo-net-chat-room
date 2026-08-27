@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 
 from app import db
 from app.models.user import User
+from app.models.ban import Ban
 from app.auth.validation import validate_username, validate_password
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -49,11 +50,14 @@ def login():
 
     user = User.query.filter_by(username=username).first()
 
-    # Deliberately vague error — never reveal whether the username exists
     invalid_creds = jsonify({"success": False, "message": "Invalid username or password."})
 
     if not user or not user.check_password(password):
         return invalid_creds, 401
+
+    active_ban = Ban.query.filter_by(user_id=user.id, is_active=True).first()
+    if active_ban:
+        return jsonify({"success": False, "message": "This account has been banned."}), 403
 
     login_user(user, remember=True)
     user.touch_last_seen()
