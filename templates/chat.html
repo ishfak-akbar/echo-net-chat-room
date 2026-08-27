@@ -2,10 +2,69 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EchoNet — Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
 </head>
 <body>
-  <p style="padding: 20px;">Chat UI coming in Step 9b.</p>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">EchoNet</div>
+      <div class="topbar-right">
+        {% if current_user.is_admin %}
+        <a href="{{ url_for('views.admin_page') }}" class="admin-link">
+          <i class="fa-solid fa-shield-halved"></i> Admin
+        </a>
+        {% endif %}
+        <div class="current-user">
+          <div class="user-avatar small">
+            {% if current_user.profile_pic %}
+              <img src="{{ current_user.profile_pic }}" alt="">
+            {% else %}
+              <i class="fa-solid fa-user"></i>
+            {% endif %}
+          </div>
+          <span>{{ current_user.username }}</span>
+        </div>
+        <button id="logout-btn" class="logout-btn" title="Log out">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <div class="app-body">
+      <aside class="sidebar">
+        <div class="sidebar-search">
+          <input type="text" id="user-search" placeholder="Search users...">
+        </div>
+        <div id="user-list" class="user-list">
+          <div class="empty-state">Loading users...</div>
+        </div>
+      </aside>
+
+      <main class="chat-main">
+        <div class="empty-chat-state">
+          <i class="fa-solid fa-comments"></i>
+          <p>Select a conversation to start chatting</p>
+          <span class="hint">Messaging arrives in the next step.</span>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    window.ECHO_USER = {
+      id: {{ current_user.id }},
+      username: {{ current_user.username | tojson }},
+      isAdmin: {{ current_user.is_admin | tojson }}
+    };
+  </script>
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  <script src="{{ url_for('static', filename='js/socket.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
 </html>
