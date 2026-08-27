@@ -39,4 +39,6 @@ def create_app():
         from app.cli import create_admin
         app.cli.add_command(create_admin)
 
+        from app import sockets
+
     return app
