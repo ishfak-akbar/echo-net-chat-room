@@ -71,3 +71,18 @@ socket.on("new_dm", (msg) => {
 socket.on("dm_read_receipt", (data) => {
   console.log("Messages read:", data.message_ids);
 });
+
+socket.on("group_history", (data) => {
+  if (activeConversation?.type === "group" && activeConversation.groupId === data.group_id) {
+    renderHistory(data.messages, (msg) => msg.sender_id === currentUserId);
+  }
+});
+
+socket.on("new_group_message", (msg) => {
+  if (activeConversation?.type === "group" && activeConversation.groupId === msg.group_id) {
+    appendMessage(msg, msg.sender_id === currentUserId);
+  } else {
+    // Not currently viewing this group -> refresh sidebar unread counts
+    socket.emit("get_my_groups");
+  }
+});

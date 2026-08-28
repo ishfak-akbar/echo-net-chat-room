@@ -45,6 +45,15 @@ function openDM(userId, username, profilePic) {
   socket.emit("mark_dm_read", { sender_id: userId });
 }
 
+function openGroup(groupId, groupName) {
+  activeConversation = { type: "group", groupId, name: groupName };
+  chatMainEl.innerHTML =
+    renderChatHeader(groupName, '<i class="fa-solid fa-users"></i>') + renderMessagesShell();
+  bindMessageForm();
+  socket.emit("get_group_history", { group_id: groupId, limit: 50 });
+  socket.emit("mark_group_read", { group_id: groupId });
+}
+
 function bindMessageForm() {
   const form = document.getElementById("message-form");
   const textInput = document.getElementById("message-input");
@@ -68,6 +77,12 @@ function bindMessageForm() {
     } else if (activeConversation.type === "dm") {
       socket.emit("send_dm", {
         receiver_id: activeConversation.userId,
+        content,
+        image_url: imageUrl,
+      });
+    } else if (activeConversation.type === "group") {
+      socket.emit("send_group_message", {
+        group_id: activeConversation.groupId,
         content,
         image_url: imageUrl,
       });

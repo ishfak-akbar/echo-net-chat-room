@@ -1,1 +1,1 @@
-from app.sockets import presence, dm, group, global_chat, broadcast, admin
+from app.sockets import presence, dm, group, global_chat, broadcast, admin, users

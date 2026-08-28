@@ -42,6 +42,17 @@
           <i class="fa-solid fa-globe"></i>
           <span>Global Chat</span>
         </div>
+
+        <div class="sidebar-actions">
+          <div class="sidebar-divider" style="padding:0;">Groups</div>
+          <button id="new-group-btn" class="new-group-btn">
+            <i class="fa-solid fa-plus"></i> New
+          </button>
+        </div>
+        <div id="group-list" class="user-list" style="flex: 0 0 auto; max-height: 160px;">
+          <div class="empty-state">Loading groups...</div>
+        </div>
+
         <div class="sidebar-divider">Direct Messages</div>
         <div class="sidebar-search">
           <input type="text" id="user-search" placeholder="Search users...">
@@ -55,9 +66,26 @@
         <div class="empty-chat-state">
           <i class="fa-solid fa-comments"></i>
           <p>Select a conversation to start chatting</p>
-          <span class="hint">Choose Global Chat or a user from the sidebar.</span>
+          <span class="hint">Choose Global Chat, a group, or a user from the sidebar.</span>
         </div>
       </main>
+    </div>
+  </div>
+
+  <div id="group-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Create Group</h3>
+        <button id="group-modal-close" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="group-form">
+        <input type="text" id="group-name-input" placeholder="Group name" required>
+        <div class="member-select-label">Select members</div>
+        <div id="group-members-list" class="member-list">
+          <div class="empty-state">Loading users...</div>
+        </div>
+        <button type="submit" class="auth-submit">Create Group</button>
+      </form>
     </div>
   </div>
 
@@ -73,6 +101,7 @@
   <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
   <script src="{{ url_for('static', filename='js/conversation.js') }}"></script>
   <script src="{{ url_for('static', filename='js/messages.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/groups.js') }}"></script>
   <script>
     openGlobalChat();
   </script>
