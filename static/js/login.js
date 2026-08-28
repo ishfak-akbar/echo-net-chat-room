@@ -4,6 +4,13 @@ const forms = {
   register: document.getElementById("register-form"),
 };
 const errorBox = document.getElementById("auth-error");
+const formTitle = document.getElementById("form-title");
+const formSub = document.getElementById("form-sub");
+
+const copy = {
+  login: { title: "Welcome", sub: "Sign in to continue the conversation." },
+  register: { title: "Join EchoNet", sub: "Create an account to get started." },
+};
 
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
@@ -13,6 +20,8 @@ tabs.forEach((tab) => {
     Object.entries(forms).forEach(([key, form]) => {
       form.classList.toggle("hidden", key !== target);
     });
+    formTitle.textContent = copy[target].title;
+    formSub.textContent = copy[target].sub;
     errorBox.textContent = "";
   });
 });

@@ -3,48 +3,122 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EchoNet — Sign In</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <title>EchoNet — Join</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
 </head>
 <body>
-  <div class="auth-page">
-    <div class="auth-card">
-      <div class="auth-title">EchoNet</div>
-      <div class="auth-subtitle">Sign in or create an account</div>
+  <div class="bg-mesh"></div>
+  <div class="bg-grid"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="wrapper">
+    <div class="panel-left">
+      <div class="brand">
+        <div class="logo-box">
+          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 28 28" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="5" cy="17" r="1.5" fill="white" />
+            <path d="M8 13.5a5 5 0 0 1 0 7" />
+            <path d="M10 10.5a9 9 0 0 1 0 13" />
+            <circle cx="23" cy="11" r="1.5" fill="white" />
+            <path d="M20 7.5a5 5 0 0 0 0 7" />
+            <path d="M18 4.5a9 9 0 0 0 0 13" />
+          </svg>
+        </div>
+        <div class="brand-name">Echo<span>Net</span></div>
+        <div class="slogan">
+          Your words travel far —<br>
+          and <em>come back stronger.</em><br>
+          <span style="font-size: 12px; opacity: 0.6">Real-time messaging, reimagined.</span>
+        </div>
+      </div>
+
+      <div class="wave-deco">
+        <svg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 120 80" fill="none" stroke="#14b8a6" stroke-width="1.5" stroke-linecap="round">
+          <path d="M10 40 Q20 20 30 40 Q40 60 50 40 Q60 20 70 40 Q80 60 90 40 Q100 20 110 40" />
+          <path d="M10 55 Q20 38 30 55 Q40 72 50 55 Q60 38 70 55 Q80 72 90 55 Q100 38 110 55" opacity="0.5" />
+          <path d="M10 25 Q20 10 30 25 Q40 40 50 25 Q60 10 70 25 Q80 40 90 25 Q100 10 110 25" opacity="0.3" />
+        </svg>
+      </div>
+
+      <div class="feature-pills">
+        <div class="pill"><span class="pill-dot"></span> Direct & Group messaging</div>
+        <div class="pill"><span class="pill-dot"></span> Global broadcast channel</div>
+        <div class="pill"><span class="pill-dot"></span> Real-time delivery receipts</div>
+        <div class="pill"><span class="pill-dot"></span> Profile pictures & presence</div>
+      </div>
+    </div>
+
+    <div class="panel-right">
+      <div class="form-title" id="form-title">Welcome</div>
+      <div class="form-sub" id="form-sub">Sign in to continue the conversation.</div>
 
       <div class="auth-tabs">
         <button class="auth-tab active" data-target="login">Login</button>
         <button class="auth-tab" data-target="register">Register</button>
       </div>
 
+      <div id="auth-error" class="auth-error"></div>
+
       <form id="login-form" class="auth-form">
-        <div class="form-group">
-          <label for="login-username">Username</label>
-          <input type="text" id="login-username" required autocomplete="username">
+        <div class="field">
+          <label>Username</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </span>
+            <input type="text" id="login-username" placeholder="your_username" autocomplete="username" required>
+          </div>
         </div>
-        <div class="form-group">
-          <label for="login-password">Password</label>
-          <input type="password" id="login-password" required autocomplete="current-password">
+        <div class="field">
+          <label>Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </span>
+            <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" required>
+          </div>
         </div>
-        <button type="submit" class="auth-submit">Log In</button>
+        <button class="btn" type="submit">Connect to EchoNet →</button>
       </form>
 
       <form id="register-form" class="auth-form hidden">
-        <div class="form-group">
-          <label for="register-username">Username</label>
-          <input type="text" id="register-username" required autocomplete="username">
+        <div class="field">
+          <label>Username</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </span>
+            <input type="text" id="register-username" placeholder="pick_a_username" autocomplete="username" required>
+          </div>
+          <div class="hint">3–20 characters: letters, numbers, underscores.</div>
         </div>
-        <div class="form-group">
-          <label for="register-password">Password</label>
-          <input type="password" id="register-password" required autocomplete="new-password">
+        <div class="field">
+          <label>Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </span>
+            <input type="password" id="register-password" placeholder="••••••••" autocomplete="new-password" required>
+          </div>
+          <div class="hint">At least 8 characters, with letters and numbers.</div>
         </div>
-        <button type="submit" class="auth-submit">Create Account</button>
+        <button class="btn" type="submit">Create Account →</button>
       </form>
-
-      <div id="auth-error" class="auth-error"></div>
     </div>
   </div>
 
