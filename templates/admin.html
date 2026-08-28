@@ -2,10 +2,59 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EchoNet — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
 <body>
-  <p style="padding: 20px;">Admin panel coming in Step 9e.</p>
+  <div class="admin-shell">
+    <header class="topbar">
+      <div class="brand">EchoNet Admin</div>
+      <div class="topbar-right">
+        <a href="{{ url_for('views.chat_page') }}" class="back-link">
+          <i class="fa-solid fa-arrow-left"></i> Back to Chat
+        </a>
+        <button id="admin-logout-btn" class="logout-btn" title="Log out">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+      </div>
+    </header>
+
+    <div class="admin-body">
+      <section class="admin-section">
+        <h3>Overview</h3>
+        <div id="stats-grid" class="stats-grid">
+          <div class="empty-state">Loading stats...</div>
+        </div>
+      </section>
+
+      <section class="admin-section">
+        <h3>Broadcast</h3>
+        <form id="broadcast-form" class="broadcast-form">
+          <input type="text" id="broadcast-input" placeholder="Send an announcement to everyone..." required>
+          <button type="submit">Send</button>
+        </form>
+        <div id="broadcast-feed" class="broadcast-feed">
+          <div class="empty-state">Loading broadcasts...</div>
+        </div>
+      </section>
+
+      <section class="admin-section">
+        <h3>User Management</h3>
+        <div id="user-mgmt-list">
+          <div class="empty-state">Loading users...</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  <script src="{{ url_for('static', filename='js/socket.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 </body>
 </html>
