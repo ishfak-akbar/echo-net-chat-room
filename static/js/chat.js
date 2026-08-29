@@ -1,7 +1,4 @@
 const socket = io({ withCredentials: true });
-  const ME = "{{ current_user.username }}";
-  const MY_ID = {{ current_user.id }};
-  const MY_DP = {{ (current_user.profile_pic or "") | tojson }};
 
   let mode = null;
   let dmTarget = null;
@@ -95,7 +92,7 @@ const socket = io({ withCredentials: true });
           <div class="avatar">${avatarInner(u)}</div>
           <div class="user-info">
             <div class="user-name">${escapeHtml(u.username)}</div>
-            <div class="last-msg">${u.is_online ? "Online" : "Offline"}</div>
+            <div class="last-msg">${lastMessagePreview[u.id] ? escapeHtml(lastMessagePreview[u.id]) : (u.is_online ? "Online" : "Offline")}</div>
           </div>
           ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ""}
         </div>`;
@@ -154,6 +151,7 @@ const socket = io({ withCredentials: true });
     document.getElementById("chat-title").textContent = title;
     document.getElementById("msg-input").disabled = false;
     document.getElementById("attach-btn").disabled = false;
+    document.getElementById("send-btn").disabled = false;
     document.getElementById("msg-input").focus();
   }
 
@@ -249,6 +247,138 @@ const socket = io({ withCredentials: true });
       renderUserList("all-user-list", allUsersList);
     }
   });
+
+  // ---------- Image attach handling ----------
+let pendingImageFile = null;
+
+function onImageSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  pendingImageFile = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById("img-preview-thumb").src = e.target.result;
+    document.getElementById("img-preview-bar").style.display = "flex";
+  };
+  reader.readAsDataURL(file);
+}
+
+function cancelImageAttach() {
+  pendingImageFile = null;
+  document.getElementById("img-attach-input").value = "";
+  document.getElementById("img-preview-bar").style.display = "none";
+}
+
+async function uploadPendingImage() {
+  if (!pendingImageFile) return null;
+  const formData = new FormData();
+  formData.append("file", pendingImageFile);
+  try {
+    const res = await fetch("/uploads/chat-image", { method: "POST", body: formData });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Image upload failed.");
+      return null;
+    }
+    return data.image_url;
+  } catch (err) {
+    alert("Image upload failed.");
+    return null;
+  }
+}
+
+// ---------- Unified send ----------
+async function sendMsg() {
+  const input = document.getElementById("msg-input");
+  const content = input.value.trim();
+
+  let imageUrl = null;
+  if (pendingImageFile) {
+    imageUrl = await uploadPendingImage();
+    if (!imageUrl) return;
+  }
+
+  if (!content && !imageUrl) return;
+
+  if (mode === "global") {
+    socket.emit("send_global_message", { content, image_url: imageUrl });
+  } else if (mode === "dm" && dmTarget) {
+    socket.emit("send_dm", { receiver_id: dmTarget.id, content, image_url: imageUrl });
+  } else if (mode === "group" && groupTarget) {
+    socket.emit("send_group_message", { group_id: groupTarget.id, content, image_url: imageUrl });
+  }
+
+  input.value = "";
+  cancelImageAttach();
+}
+
+document.getElementById("msg-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    sendMsg();
+  }
+});
+
+// ---------- Direct Messages ----------
+const lastMessagePreview = {};
+
+function updateChatPreview(userId, content, imageUrl) {
+  lastMessagePreview[userId] = imageUrl ? "📷 Photo" : (content || "");
+  if (document.getElementById("tab-online").classList.contains("active")) {
+    renderUserList("user-list", onlineUsersList);
+  } else if (document.getElementById("tab-all").classList.contains("active")) {
+    renderUserList("all-user-list", allUsersList);
+  }
+}
+
+function openDM(user) {
+  mode = "dm";
+  dmTarget = user;
+  groupTarget = null;
+  document.querySelectorAll(".global-link").forEach((l) => l.classList.remove("active"));
+
+  showChatUI(user.username);
+  updateRightPanel(user.username, user.is_online ? "Online" : "Offline", avatarInner(user));
+
+  if (!conversations[user.id]) conversations[user.id] = [];
+  renderMessages(conversations[user.id]);
+
+  socket.emit("get_dm_history", { other_user_id: user.id, limit: 50 });
+  socket.emit("mark_dm_read", { sender_id: user.id });
+  unreadCounts[user.id] = 0;
+  updateDots();
+
+  if (document.getElementById("tab-online").classList.contains("active")) {
+    renderUserList("user-list", onlineUsersList);
+  } else if (document.getElementById("tab-all").classList.contains("active")) {
+    renderUserList("all-user-list", allUsersList);
+  }
+}
+
+socket.on("dm_history", (data) => {
+  conversations[data.other_user_id] = data.messages;
+  if (mode === "dm" && dmTarget && dmTarget.id === data.other_user_id) {
+    renderMessages(conversations[data.other_user_id]);
+  }
+});
+
+socket.on("new_dm", (msg) => {
+  const otherId = msg.sender_id === MY_ID ? msg.receiver_id : msg.sender_id;
+  if (!conversations[otherId]) conversations[otherId] = [];
+  conversations[otherId].push(msg);
+
+  updateChatPreview(otherId, msg.content, msg.image_url);
+
+  if (mode === "dm" && dmTarget && dmTarget.id === otherId) {
+    renderMessages(conversations[otherId]);
+    if (msg.sender_id !== MY_ID) {
+      socket.emit("mark_dm_read", { sender_id: otherId });
+    }
+  } else if (msg.sender_id !== MY_ID) {
+    unreadCounts[otherId] = (unreadCounts[otherId] || 0) + 1;
+    updateDots();
+  }
+});
 
   // ---------- Socket events: global chat ----------
   socket.on("global_history", (data) => {
