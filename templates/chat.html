@@ -172,11 +172,10 @@
 
   <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
   <script>
-    // JS wiring to the new Socket.IO/REST backend is added in the next step.
-    // All markup/CSS above is restored exactly to the original design.
-    const socket = io({ withCredentials: true });
-    const ME = "{{ current_user.username }}";
-    const MY_ID = {{ current_user.id }};
+   const ME = "{{ current_user.username }}";
+   const MY_ID = {{ current_user.id }};
+   const MY_DP = {{ (current_user.profile_pic or "") | tojson }};
   </script>
+  <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
 </html>
