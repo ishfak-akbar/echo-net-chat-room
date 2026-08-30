@@ -74,6 +74,7 @@ const socket = io({ withCredentials: true });
     document.getElementById("groups-section").style.display = "block";
     document.getElementById("search-list").style.display = "none";
     socket.emit("get_my_groups");
+    renderGroupSidebarList();
   }
 
   // ---------- User list rendering ----------
@@ -402,3 +403,135 @@ socket.on("new_dm", (msg) => {
   });
 
   openGlobal();
+
+  // ---------- Groups ----------
+function renderGroupSidebarList() {
+  const el = document.getElementById("group-list");
+  if (!myGroups || myGroups.length === 0) {
+    el.innerHTML = `<div style="padding:16px 18px;text-align:center;color:var(--muted);font-size:13px;">No groups yet</div>`;
+    return;
+  }
+  el.innerHTML = myGroups
+    .map((g) => {
+      const unread = groupUnreadCounts[g.id] || 0;
+      const isActive = mode === "group" && groupTarget && groupTarget.id === g.id;
+      return `
+      <div class="group-item ${isActive ? "active" : ""}" data-group-id="${g.id}">
+        <div class="avatar">${escapeHtml(g.name[0].toUpperCase())}</div>
+        <div class="user-info">
+          <div class="user-name">${escapeHtml(g.name)}</div>
+          <div class="last-msg">${g.member_ids.length} members</div>
+        </div>
+        ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ""}
+      </div>`;
+    })
+    .join("");
+
+  el.querySelectorAll(".group-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      const id = parseInt(item.dataset.groupId, 10);
+      const group = myGroups.find((g) => g.id === id);
+      if (group) openGroup(group);
+    });
+  });
+}
+
+function openGroup(group) {
+  mode = "group";
+  groupTarget = group;
+  dmTarget = null;
+  document.querySelectorAll(".global-link").forEach((l) => l.classList.remove("active"));
+
+  showChatUI(group.name);
+  updateRightPanel(group.name, `${group.member_ids.length} members`, `<i class="fa-solid fa-users"></i>`);
+
+  if (!groupConversations[group.id]) groupConversations[group.id] = [];
+  renderMessages(groupConversations[group.id]);
+
+  socket.emit("get_group_history", { group_id: group.id, limit: 50 });
+  socket.emit("mark_group_read", { group_id: group.id });
+  groupUnreadCounts[group.id] = 0;
+  updateDots();
+  renderGroupSidebarList();
+}
+
+function openGroupModal() {
+  document.getElementById("g-name").value = "";
+  document.getElementById("group-overlay").classList.add("show");
+  socket.emit("get_all_users");
+  renderMemberCheckboxes();
+}
+
+function closeGroupModal() {
+  document.getElementById("group-overlay").classList.remove("show");
+}
+
+function renderMemberCheckboxes() {
+  const el = document.getElementById("member-list");
+  if (!allUsersList || allUsersList.length === 0) {
+    el.innerHTML = `<div style="padding:12px;text-align:center;color:var(--muted);font-size:13px;">No other users to add</div>`;
+    return;
+  }
+  el.innerHTML = allUsersList
+    .map(
+      (u) => `
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:pointer;font-size:13.5px;">
+        <input type="checkbox" value="${u.id}" style="accent-color:var(--accent-end);width:16px;height:16px;">
+        <span>${escapeHtml(u.username)}</span>
+      </label>`
+    )
+    .join("");
+}
+
+function submitCreateGroup() {
+  const name = document.getElementById("g-name").value.trim();
+  const checked = Array.from(
+    document.querySelectorAll("#member-list input[type=checkbox]:checked")
+  ).map((cb) => parseInt(cb.value, 10));
+
+  if (!name || checked.length === 0) {
+    alert("Enter a group name and select at least one member.");
+    return;
+  }
+
+  socket.emit("create_group", { name, member_ids: checked });
+}
+
+socket.on("my_groups", (data) => {
+  myGroups = data.groups;
+  data.groups.forEach((g) => {
+    groupUnreadCounts[g.id] = g.unread_count;
+  });
+  updateDots();
+  if (document.getElementById("groups-section").style.display !== "none") {
+    renderGroupSidebarList();
+  }
+});
+
+socket.on("group_created", () => {
+  closeGroupModal();
+  socket.emit("get_my_groups");
+});
+
+socket.on("group_history", (data) => {
+  groupConversations[data.group_id] = data.messages;
+  if (mode === "group" && groupTarget && groupTarget.id === data.group_id) {
+    renderMessages(groupConversations[data.group_id]);
+  }
+});
+
+socket.on("new_group_message", (msg) => {
+  if (!groupConversations[msg.group_id]) groupConversations[msg.group_id] = [];
+  groupConversations[msg.group_id].push(msg);
+
+  if (mode === "group" && groupTarget && groupTarget.id === msg.group_id) {
+    renderMessages(groupConversations[msg.group_id]);
+    if (msg.sender_id !== MY_ID) {
+      socket.emit("mark_group_read", { group_id: msg.group_id });
+    }
+  } else if (msg.sender_id !== MY_ID) {
+    groupUnreadCounts[msg.group_id] = (groupUnreadCounts[msg.group_id] || 0) + 1;
+    updateDots();
+    renderGroupSidebarList();
+  }
+});
