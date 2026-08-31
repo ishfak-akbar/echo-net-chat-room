@@ -3,58 +3,82 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EchoNet — Admin</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <title>Admin Panel — EchoNet</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
 <body>
-  <div class="admin-shell">
-    <header class="topbar">
-      <div class="brand">EchoNet Admin</div>
-      <div class="topbar-right">
-        <a href="{{ url_for('views.chat_page') }}" class="back-link">
-          <i class="fa-solid fa-arrow-left"></i> Back to Chat
-        </a>
-        <button id="admin-logout-btn" class="logout-btn" title="Log out">
-          <i class="fa-solid fa-right-from-bracket"></i>
-        </button>
+  <div class="header">
+    <div class="header-left">
+      <div class="logo-box">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 28 28" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="5" cy="17" r="1.5" fill="white" />
+          <path d="M8 13.5a5 5 0 0 1 0 7" />
+          <path d="M10 10.5a9 9 0 0 1 0 13" />
+          <circle cx="23" cy="11" r="1.5" fill="white" />
+          <path d="M20 7.5a5 5 0 0 0 0 7" />
+          <path d="M18 4.5a9 9 0 0 0 0 13" />
+        </svg>
       </div>
-    </header>
+      <h1>Echo<span>Net</span> — Admin</h1>
+    </div>
+    <div class="header-right">
+      <span class="badge-admin"><i class="fa-solid fa-shield-halved"></i> Admin</span>
+      <a href="/chat" class="logout-btn" style="background:rgba(20,184,166,0.1);border-color:rgba(20,184,166,0.3);color:var(--accent-end);">
+        <i class="fa-solid fa-arrow-left"></i> Back to Chat
+      </a>
+      <a href="#" id="logout-link" class="logout-btn"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    </div>
+  </div>
 
-    <div class="admin-body">
-      <section class="admin-section">
-        <h3>Overview</h3>
-        <div id="stats-grid" class="stats-grid">
-          <div class="empty-state">Loading stats...</div>
-        </div>
-      </section>
+  <div class="wrap">
+    <div class="card card-full">
+      <div class="card-title"><i class="fa-solid fa-bullhorn"></i> Broadcast to All</div>
+      <div class="bc-form">
+        <textarea id="bc-msg" placeholder="Send a message to all users..."></textarea>
+        <button class="bc-btn" onclick="doBroadcast()"><i class="fa-solid fa-paper-plane"></i> Send</button>
+      </div>
+    </div>
 
-      <section class="admin-section">
-        <h3>Broadcast</h3>
-        <form id="broadcast-form" class="broadcast-form">
-          <input type="text" id="broadcast-input" placeholder="Send an announcement to everyone..." required>
-          <button type="submit">Send</button>
-        </form>
-        <div id="broadcast-feed" class="broadcast-feed">
-          <div class="empty-state">Loading broadcasts...</div>
-        </div>
-      </section>
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-circle-dot"></i> Online Users</div>
+      <ul class="user-list" id="admin-users">
+        <li class="empty">Loading...</li>
+      </ul>
+    </div>
 
-      <section class="admin-section">
-        <h3>User Management</h3>
-        <div id="user-mgmt-list">
-          <div class="empty-state">Loading users...</div>
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-chart-simple"></i> Stats</div>
+      <div class="stats">
+        <div class="stat"><span class="stat-label">Online now</span><span class="stat-val" id="s-online">0</span></div>
+        <div class="stat"><span class="stat-label">Actions taken</span><span class="stat-val" id="s-actions">0</span></div>
+        <div class="stat"><span class="stat-label">Broadcasts sent</span><span class="stat-val" id="s-bc">0</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-ban"></i> Banned Users</div>
+      <ul class="user-list" id="ban-list">
+        <li class="empty">Loading...</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><i class="fa-solid fa-scroll"></i> Activity Log</div>
+      <div id="log">
+        <div class="log-row">
+          <span class="log-t">--:--</span>
+          <span class="log-m">Waiting for activity...</span>
         </div>
-      </section>
+      </div>
     </div>
   </div>
 
   <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-  <script src="{{ url_for('static', filename='js/socket.js') }}"></script>
+  <script>
+    const MY_ID = {{ current_user.id }};
+  </script>
   <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 </body>
 </html>

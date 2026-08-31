@@ -1,176 +1,153 @@
-const statsGrid = document.getElementById("stats-grid");
-const userMgmtList = document.getElementById("user-mgmt-list");
-const broadcastForm = document.getElementById("broadcast-form");
-const broadcastFeed = document.getElementById("broadcast-feed");
-const logoutBtn = document.getElementById("admin-logout-btn");
+const socket = io({ withCredentials: true });
 
-let allUsersAdmin = [];
-let bannedUserIds = new Set();
+let actions = parseInt(localStorage.getItem("admin_actions") || "0");
+document.getElementById("s-actions").textContent = actions;
 
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
+function log(text) {
+  const box = document.getElementById("log");
+  const placeholder = box.querySelector(".log-m");
+  if (placeholder && placeholder.textContent === "Waiting for activity...") {
+    box.innerHTML = "";
+  }
+  const now = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  const row = document.createElement("div");
+  row.className = "log-row";
+  row.innerHTML = `<span class="log-t">${now}</span><span class="log-m">${text}</span>`;
+  box.appendChild(row);
+  box.scrollTop = box.scrollHeight;
 }
 
-function formatTime(isoString) {
-  const date = new Date(isoString);
-  return date.toLocaleString([], { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" });
+function bumpActions() {
+  actions++;
+  localStorage.setItem("admin_actions", actions);
+  document.getElementById("s-actions").textContent = actions;
 }
 
-function renderStats(stats) {
-  const items = [
-    { label: "Total Users", value: stats.total_users },
-    { label: "Online Now", value: stats.online_users },
-    { label: "Groups", value: stats.total_groups },
-    { label: "DM Messages", value: stats.total_dm_messages },
-    { label: "Group Messages", value: stats.total_group_messages },
-    { label: "Global Messages", value: stats.total_global_messages },
-    { label: "Broadcasts", value: stats.total_broadcasts },
-    { label: "Active Bans", value: stats.active_bans },
-  ];
-  statsGrid.innerHTML = items
-    .map(
-      (i) => `
-      <div class="stat-card">
-        <div class="stat-value">${i.value}</div>
-        <div class="stat-label">${i.label}</div>
-      </div>
-    `
-    )
-    .join("");
-}
+// ---------- Online users ----------
+socket.on("online_users_snapshot", (data) => {
+  const list = document.getElementById("admin-users");
+  const online = data.users.filter((u) => u.id !== MY_ID);
+  document.getElementById("s-online").textContent = online.length;
 
-function renderUserManagement() {
-  if (allUsersAdmin.length === 0) {
-    userMgmtList.innerHTML = `<div class="empty-state">No other users</div>`;
+  if (!online.length) {
+    list.innerHTML = '<li class="empty">No other users online</li>';
     return;
   }
 
-  userMgmtList.innerHTML = allUsersAdmin
-    .map((u) => {
-      const isBanned = bannedUserIds.has(u.id);
-      return `
-        <div class="admin-user-row">
-          <div class="admin-user-info">
-            <div class="user-avatar small">
-              ${u.profile_pic ? `<img src="${u.profile_pic}" alt="">` : `<i class="fa-solid fa-user"></i>`}
-              ${u.is_online ? `<span class="status-dot online"></span>` : ""}
-            </div>
-            <span>${escapeHtml(u.username)}</span>
-            ${isBanned ? `<span class="ban-tag">Banned</span>` : ""}
-          </div>
-          <div class="admin-user-actions">
-            ${
-              isBanned
-                ? `<button class="admin-btn unban" data-action="unban" data-user-id="${u.id}">Unban</button>`
-                : `
-                  <button class="admin-btn kick" data-action="kick" data-user-id="${u.id}">Kick</button>
-                  <button class="admin-btn ban" data-action="ban" data-user-id="${u.id}">Ban</button>
-                `
-            }
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-}
-
-userMgmtList.addEventListener("click", (e) => {
-  const btn = e.target.closest(".admin-btn");
-  if (!btn) return;
-  const userId = parseInt(btn.dataset.userId, 10);
-  const action = btn.dataset.action;
-
-  if (action === "kick") {
-    socket.emit("kick_user", { user_id: userId });
-  } else if (action === "ban") {
-    const reason = prompt("Reason for ban (optional):") || "";
-    socket.emit("ban_user", { user_id: userId, reason });
-  } else if (action === "unban") {
-    socket.emit("unban_user", { user_id: userId });
-  }
+  list.innerHTML = "";
+  online.forEach((u) => {
+    const li = document.createElement("li");
+    li.id = `auser-${u.id}`;
+    li.innerHTML = `
+      <span class="udot"></span>
+      <span style="font-weight:500">${u.username}</span>
+      <div class="actions">
+        <button class="bkick" onclick="doKick(${u.id}, '${u.username}')">Kick</button>
+        <button class="bban" onclick="doBan(${u.id}, '${u.username}')">Ban</button>
+      </div>`;
+    list.appendChild(li);
+  });
 });
 
-broadcastForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const input = document.getElementById("broadcast-input");
-  const content = input.value.trim();
-  if (!content) return;
-  socket.emit("send_broadcast", { content });
-  input.value = "";
-});
-
-function renderBroadcastFeed(broadcasts) {
-  if (broadcasts.length === 0) {
-    broadcastFeed.innerHTML = `<div class="empty-state">No broadcasts yet</div>`;
-    return;
-  }
-  broadcastFeed.innerHTML = broadcasts
-    .map(
-      (b) => `
-      <div class="broadcast-item">
-        <div class="broadcast-meta">
-          <strong>${escapeHtml(b.admin_username || "Admin")}</strong>
-          <span>${formatTime(b.timestamp)}</span>
-        </div>
-        <div class="broadcast-content">${escapeHtml(b.content)}</div>
-      </div>
-    `
-    )
-    .join("");
-}
-
-logoutBtn.addEventListener("click", async () => {
-  await fetch("/auth/logout", { method: "POST" });
-  window.location.href = "/login";
-});
-
-socket.on("admin_stats", renderStats);
-
-socket.on("all_users", (data) => {
-  allUsersAdmin = data.users;
-  renderUserManagement();
-});
-
+// ---------- Banned users ----------
 socket.on("banned_users", (data) => {
-  bannedUserIds = new Set(data.bans.map((b) => b.user_id));
-  renderUserManagement();
+  const list = document.getElementById("ban-list");
+  if (!data.bans.length) {
+    list.innerHTML = '<li class="empty">No banned users</li>';
+    return;
+  }
+  list.innerHTML = "";
+  data.bans.forEach((b) => {
+    const li = document.createElement("li");
+    li.id = `buser-${b.user_id}`;
+    li.innerHTML = `
+      <span class="bdot"></span>
+      <span style="font-weight:500">${b.username}</span>
+      <div class="actions">
+        <button class="bunban" onclick="doUnban(${b.user_id}, '${b.username}')">Unban</button>
+      </div>`;
+    list.appendChild(li);
+  });
 });
 
+// ---------- Stats ----------
+socket.on("admin_stats", (stats) => {
+  document.getElementById("s-online").textContent = stats.online_users;
+  document.getElementById("s-bc").textContent = stats.total_broadcasts;
+});
+
+// ---------- Broadcasts ----------
 socket.on("broadcast_history", (data) => {
-  renderBroadcastFeed(data.broadcasts);
+  data.broadcasts.forEach((b) => log(`📢 ${b.content}`));
 });
 
-socket.on("new_broadcast", (broadcast) => {
-  const emptyState = broadcastFeed.querySelector(".empty-state");
-  if (emptyState) broadcastFeed.innerHTML = "";
-  broadcastFeed.insertAdjacentHTML(
-    "afterbegin",
-    `
-      <div class="broadcast-item">
-        <div class="broadcast-meta">
-          <strong>${escapeHtml(broadcast.admin_username || "Admin")}</strong>
-          <span>${formatTime(broadcast.timestamp)}</span>
-        </div>
-        <div class="broadcast-content">${escapeHtml(broadcast.content)}</div>
-      </div>
-    `
-  );
-});
-
-socket.on("admin_action", () => {
-  socket.emit("get_all_users");
-  socket.emit("get_banned_users");
+socket.on("new_broadcast", (b) => {
+  log(`📢 Broadcast: ${b.content}`);
   socket.emit("get_admin_stats");
 });
+
+function doBroadcast() {
+  const msg = document.getElementById("bc-msg").value.trim();
+  if (!msg) return;
+  socket.emit("send_broadcast", { content: msg });
+  document.getElementById("bc-msg").value = "";
+}
+
+// ---------- Actions: kick / ban / unban ----------
+socket.on("admin_action", (data) => {
+  if (data.action === "kick") {
+    log(`⚠️ Kicked ${data.username}`);
+    document.getElementById(`auser-${data.user_id}`)?.remove();
+  } else if (data.action === "ban") {
+    log(`🚫 Banned ${data.username}${data.reason ? " (" + data.reason + ")" : ""}`);
+    document.getElementById(`auser-${data.user_id}`)?.remove();
+  } else if (data.action === "unban") {
+    log(`✅ Unbanned ${data.username}`);
+    const li = document.getElementById(`buser-${data.user_id}`);
+    if (li) li.remove();
+    const list = document.getElementById("ban-list");
+    if (!list.children.length) list.innerHTML = '<li class="empty">No banned users</li>';
+  }
+  socket.emit("get_admin_stats");
+  socket.emit("get_banned_users");
+});
+
+function doKick(userId, username) {
+  if (!confirm(`Kick ${username} from the chat?`)) return;
+  socket.emit("kick_user", { user_id: userId });
+  bumpActions();
+}
+
+function doBan(userId, username) {
+  if (!confirm(`Permanently ban ${username}?`)) return;
+  socket.emit("ban_user", { user_id: userId });
+  bumpActions();
+}
+
+function doUnban(userId, username) {
+  if (!confirm(`Unban ${username}?`)) return;
+  socket.emit("unban_user", { user_id: userId });
+  bumpActions();
+}
 
 socket.on("error", (data) => {
   alert(data.message);
 });
 
-// Initial load
+socket.on("disconnect", (reason) => {
+  if (reason === "io server disconnect") {
+    window.location.href = "/login";
+  }
+});
+
+// ---------- Logout ----------
+document.getElementById("logout-link").addEventListener("click", async (e) => {
+  e.preventDefault();
+  await fetch("/auth/logout", { method: "POST" });
+  window.location.href = "/login";
+});
+
+// ---------- Initial load ----------
 socket.emit("get_admin_stats");
-socket.emit("get_all_users");
 socket.emit("get_banned_users");
 socket.emit("get_broadcast_history", { limit: 20 });
