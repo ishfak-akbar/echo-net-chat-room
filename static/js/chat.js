@@ -13,6 +13,7 @@ const socket = io({ withCredentials: true });
   let unreadCounts = {};
   let myGroups = [];
   let groupUnreadCounts = {};
+  let broadcastHistory = [];
 
   const dpCache = {};
 
@@ -151,6 +152,7 @@ const socket = io({ withCredentials: true });
     document.getElementById("input-row").style.display = "flex";
     document.getElementById("chat-title").textContent = title;
     document.getElementById("msg-input").disabled = false;
+    document.getElementById("msg-input").placeholder = "Type a message...";
     document.getElementById("attach-btn").disabled = false;
     document.getElementById("send-btn").disabled = false;
     document.getElementById("msg-input").focus();
@@ -205,6 +207,7 @@ const socket = io({ withCredentials: true });
       })
       .join("");
     el.scrollTop = el.scrollHeight;
+    updateSharedMediaFromList(list);
   }
 
   function openLightbox(url) {
@@ -300,7 +303,12 @@ async function sendMsg() {
   }
 
   if (!content && !imageUrl) return;
-
+  if (mode === "broadcast") {
+    if (!IS_ADMIN || !content) return;
+    socket.emit("send_broadcast", { content });
+    input.value = "";
+    return;
+  }
   if (mode === "global") {
     socket.emit("send_global_message", { content, image_url: imageUrl });
   } else if (mode === "dm" && dmTarget) {
@@ -533,5 +541,76 @@ socket.on("new_group_message", (msg) => {
     groupUnreadCounts[msg.group_id] = (groupUnreadCounts[msg.group_id] || 0) + 1;
     updateDots();
     renderGroupSidebarList();
+  }
+});
+
+// ---------- Shared Media ----------
+function updateSharedMediaFromList(list) {
+  const media = list.filter((m) => m.image_url);
+  const emptyEl = document.getElementById("shared-media-empty");
+  const gridEl = document.getElementById("shared-media-grid");
+
+  if (media.length === 0) {
+    emptyEl.style.display = "flex";
+    gridEl.style.display = "none";
+    gridEl.innerHTML = "";
+    return;
+  }
+
+  emptyEl.style.display = "none";
+  gridEl.style.display = "grid";
+  gridEl.innerHTML = media
+    .map(
+      (m) => `
+      <div class="media-thumb" onclick="openLightbox('${m.image_url}')">
+        <img src="${m.image_url}">
+      </div>`
+    )
+    .join("");
+}
+
+// ---------- Broadcasts ----------
+function openBroadcasts() {
+  mode = "broadcast";
+  dmTarget = null;
+  groupTarget = null;
+  document.querySelectorAll(".global-link").forEach((l) => l.classList.remove("active"));
+  document.getElementById("broadcast-btn").classList.add("active");
+
+  document.getElementById("empty-state").style.display = "none";
+  document.getElementById("chat-header").style.display = "flex";
+  document.getElementById("messages").style.display = "flex";
+  document.getElementById("chat-title").textContent = "Broadcasts";
+
+  if (IS_ADMIN) {
+    document.getElementById("input-row").style.display = "flex";
+    document.getElementById("msg-input").disabled = false;
+    document.getElementById("msg-input").placeholder = "Send an announcement to everyone...";
+    document.getElementById("attach-btn").disabled = true;
+    document.getElementById("send-btn").disabled = false;
+  } else {
+    document.getElementById("input-row").style.display = "none";
+  }
+
+  updateRightPanel("Broadcasts", "Announcements from admins", `<i class="fa-solid fa-bullhorn"></i>`);
+  renderMessages(broadcastHistory.map((b) => ({ type: "broadcast", content: b.content })));
+  document.getElementById("broadcast-dot").style.display = "none";
+
+  socket.emit("get_broadcast_history", { limit: 30 });
+}
+
+socket.on("broadcast_history", (data) => {
+  broadcastHistory = data.broadcasts;
+  if (mode === "broadcast") {
+    renderMessages(broadcastHistory.map((b) => ({ type: "broadcast", content: b.content })));
+  }
+});
+
+socket.on("new_broadcast", (b) => {
+  broadcastHistory.push(b);
+  if (mode === "broadcast") {
+    renderMessages(broadcastHistory.map((x) => ({ type: "broadcast", content: x.content })));
+  } else {
+    document.getElementById("broadcast-dot").style.display = "inline-block";
   }
 });

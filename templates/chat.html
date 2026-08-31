@@ -175,6 +175,7 @@
    const ME = "{{ current_user.username }}";
    const MY_ID = {{ current_user.id }};
    const MY_DP = {{ (current_user.profile_pic or "") | tojson }};
+   const IS_ADMIN = {{ current_user.is_admin | tojson }};
   </script>
   <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 </body>
