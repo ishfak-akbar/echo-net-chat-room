@@ -614,3 +614,27 @@ socket.on("new_broadcast", (b) => {
     document.getElementById("broadcast-dot").style.display = "inline-block";
   }
 });
+
+// ---------- Profile Picture ----------
+async function uploadDP(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await fetch("/uploads/dp", { method: "POST", body: formData });
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.message || "Profile picture upload failed.");
+      return;
+    }
+    document.getElementById("my-avatar").innerHTML =
+      `<img src="${data.profile_pic}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  } catch (err) {
+    alert("Profile picture upload failed.");
+  } finally {
+    input.value = "";
+  }
+}
